@@ -83,9 +83,9 @@ reproduce and fix issues much faster.
 ## Errors and Suggestions with this Document
 
 This document maintains an issue tracker on its github repository located at
-[https://github.com/illumos/dev-guide](illumos Developer's Guide). Whether you encounter a typo, have a
-suggestion for this document, a question about it, or anything else, please feel
-create a ticket.
+[illumos Developer's Guide](https://github.com/illumos/dev-guide).
+Whether you encounter a typo, have a suggestion for this document, a question about it,
+or anything else, please feel create a ticket.
 Various members of the community who have helped create and shape this document are
 available on IRC. If you have questions or constructive complaints, please let
 them know. If you report typos, broken links, or other similar issues and can
