@@ -1128,13 +1128,13 @@ generate a core dump or causes the system to panic, here are a few things you
 can do next.
 
 The first thing you should consider doing is going and filing a bug, by going to
-[http://illumos.org/bugs/](the illumos bug tacker). If you don't have an
+[the illumos bug tacker](http://illumos.org/bugs/). If you don't have an
 account, don't let that stop you and hop into IRC or ask about it on a mailing
 list. We want to know when bugs and panics occur so we can fix them!
 
 For additional information on using these tools, you should check out the
-[http://dtrace.org/guide](DTrace guide) and [http://illumos.org/books/mdb](the
-MDB book).
+[DTrace guide](http://dtrace.org/guide) and [the MDB
+book](http://illumos.org/books/mdb).
 
 If you find yourself stuck, or are uncertain of where to go next, please reach
 out to the community, we're happy to help. Again, the best places to do that are
