@@ -1,0 +1,2926 @@
+# Component Anatomy, Creation and Modification
+
+This section of the developer's guide covers everything that you need to know
+about creating new commands, libraries, and kernel modules. Each component
+listed here is independent, so feel free to jump ahead to one of the components
+that you are interested in.
+
+## Commands
+
+Commands comprise the components of the system that the user is most familiar
+with. These include all of the traditional Unix shell commands such as ls(1) and
+grep(1), management tools like vmstat(1) and ifconfig(1M), and illumos specific
+tools like zfs(1M), dtrace(1M), and prstat(1M).
+
+Each directory in `usr/src/cmd` contains both the source code and Makefiles to
+generate one or more programs which end up installed in various locations in the
+proto area, the two most common locations for commands are `/usr/bin` and
+`/usr/sbin`. In addition, userland daemons, such as dlmgmtd(1M) and smbd(1M),
+are also found under `usr/src/cmd`. SMF manifests for services that run these
+daemons are found inside of the source directories for a command.
+
+### Handling Multiple Architectures
+
+By default, most commands are 32-bit executables for the target architecture
+you're building (eg. sparc or intel). For most binaries it doesn't matter
+whether they are 32-bit or 64-bit. For example, the venerable command
+yes(1) or cal(1) functions identically whether it's a 32-bit or
+64-bit binary. This also comes from the traditional multilib configuration that
+illumos has used across various compiler tool chains. The default architecture
+for the compiler is 32-bit and a user can ask the compiler for a 64-bit binary
+instead.
+
+Some commands have code which varies based on whether the program is running on
+an x86 or SPARC processor. They may contain plugins which only target x86. For
+example, devfsadm(1M) needs to builds an x86 specific plugin for devices which
+do not occur on SPARC systems.
+
+There are a third set of commands which need to execute a version depending on
+the architecture of the kernel or of a process which is being debugged. Examples
+of commands that fall into this bucket are ps(1) and mdb(1). To help
+make this invisible to the user, illumos uses a command called `isaexec` which
+is based on the isaexec(3C) library call. Programs that need this behavior
+hardlink themselves to isaexec and place architecture specific copies of them
+into the architecture specific directories. Take dtrace(1M) as an example. A
+32-bit i386 copy of the program is located in `/usr/sbin/i86/dtrace` and the
+64-bit version in `/usr/sbin/amd64/dtrace`. When a user runs `/usr/sbin/dtrace`,
+`isaexec` makes sure that the appropriate version for the architecture is run.
+
+### Parts of a Command Directory
+
+Among all of the different components in the system, commands are built the most
+inconsistently. Part of this is due to the wildly different nature of commands
+and the difference in complexity between them. At its simplest level a command
+directory contains just two files: a source file, usually written in C, and a
+Makefile. A good example of this is the cal(1) command. It's directory
+looks like:
+
+```
+$ ls cmd/cal
+Makefile        cal.c
+$
+```
+
+If you go ahead and build cal via `dmake` and bldenv(1) you'll see the
+program has been built and lands in the top level `cal` directory:
+
+```
+$ dmake
+...
+$ ls
+Makefile  cal       cal.c
+$ file cal
+cal:            ELF 32-bit LSB executable 80386 Version 1, dynamically linked,
+not stripped, no debugging information available
+$
+```
+
+#### Multiple Architecture Commands
+
+The next most common set of commands are also single source file commands;
+however, instead of building just the default 32-bit target, they need to build
+both a 32-bit and 64-bit target. A good example of this is the gcore(1)
+command. It consists of just one source file, but contains a few more
+directories and Makefiles. At it's top level the gcore directory looks like:
+
+```
+Makefile        gcore.c         sparc
+amd64           i386            sparcv9
+```
+
+Here the top level Makefile's main purpose is to invoke `make` recursively on
+the subdirectories for the machine and its 64-bit architecture. The architecture
+specific Makefile generally takes care of invoking the actual commands that need
+to run. Often times, a great deal is shared between all the different
+architectures, for example specific `CFLAGS` or library that need to be linked.
+In such a case, you'll also find a file named `Makefile.com` in the command's
+top level directory. Inside of each of the architecture subdirectories is a
+single Makefile:
+
+```
+$ ls i386 amd64 sparc sparcv9
+amd64:
+Makefile
+
+i386:
+Makefile
+
+sparc:
+Makefile
+
+sparcv9:
+Makefile
+```
+
+Unlike with cal, the output for each architecture does not end up in the top
+level directory. If it were, you'd quickly clobber the work of all the others.
+Here, if you run `dmake` then it will build in the 32-bit and 64-bit
+architecture that you're build is targeting. You can also cd into an individual
+architecture directory eg. `cmd/gcore/amd64` and run `dmake` to just build that
+one target. Generally, though, you'll want to stick to the top level.
+
+#### Multi-source File Commands
+
+Building up from our previous examples, the next thing that it makes sense to
+look at is something with multiple source files. A good example of this is
+prstat(1M). The main difference between commands with just a single source
+file and ones with multiple are the differences in the Makefiles. We'll go into
+more detail with that a bit latter on as we demonstrate how to create something
+that fits these different models. If you look at the top level directory for
+`prstat`, you'll notice it looks somewhat famliiar.
+
+```
+$ ls cmd/prstat
+Makefile        prfile.c        prstat.c        prtable.h
+Makefile.com    prfile.h        prstat.h        prutil.c
+amd64           prsort.c        prstat.xcl      prutil.h
+i386            prsort.h        prtable.c       sparcv9
+$
+```
+
+`prstat` uses the convention mentioned previously around `Makefile.com`. In
+addition, its `Makefile.com` also defeines several make targets. This is used to
+drive the compilation of the targets. As we described earlier, we're using
+specific calls to the macros `$(LINK.c)` and `$(COMPILE.c)`. The use of these
+directly is special to commands as there is no current centralized command
+format. You may also be asking what is the deal with the `prstat.xcl` file. It
+exists as a part of internationalization.
+
+If you peak inside one of the target specific directories, you'll find all of
+the object files as well as the generated objects. For example, if we poke
+inside of the amd64 directory we see both the `.o` files and the `prstat`
+binary.
+
+```
+$ ls cmd/prstat/amd64
+Makefile  prfile.o  prsort.o  prstat  prstat.o  prtable.o  prutil.o
+$ file cmd/prstat/amd64/prfile.o 
+cmd/prstat/amd64/prfile.o: ELF 64-bit LSB relocatable AMD64 Version 1
+$ file cmd/prstat/amd64/prstat
+cmd/prstat/amd64/prstat:   ELF 64-bit LSB executable AMD64 Version 1, dynamically linked,
+not stripped, no debugging information available
+$
+```
+
+The same rules for building individual architectures versus all of them hold
+true here as well. The `make` targets at the top level descend into all of the
+subdirectories while the individual ones target just that specific architecture.
+
+#### Multi-command Directories
+
+Some directories are entire worlds unto themselves. The idea here is that you
+have a top level component that has multiple sub-components in the form of
+additional commands and sometimes even libraries. For example, rather than
+having one directory in `cmd/` for `smbd`, `smbadm` and `smbstat`, they are instead
+all contained within the `cmd/smbsrv` directory. This allows for the directory
+structure to help impart and allow for more sharing between the directories.
+
+The general strategy here is very similar to that for handling multiple
+architectures where we invoke `make` recursively. In this case we invoke `make`
+for each of the different directories and then inside of each of them you likely
+have the familiar multiple architecture dance. This is just another layer of
+indirection that allows for sharing common makefiles between different
+components. Let's look at the contents of the `smbsrv` directory as an example:
+
+```
+$ ls cmd/smbsrv
+dtrace    Makefile.smbsrv.defs  Makefile.subdirs  smbd
+Makefile  Makefile.smbsrv.targ  smbadm            smbstat
+$
+```
+
+Here the files `Makefile.smbsrv.defs` and `Makefile.smbsrv.targ` provide
+definitions that are shared amongst all of the different commands. And if you
+look inside one of these subdirectories you'll find that they look similar to
+what we've seen elsewhere:
+
+```
+$ ls cmd/smbsrv/smbd
+Makefile              smbd_doorsvc.c        smbd_nicmon.c         smbd_vss.c
+eventlog.dll          smbd_join.c           smbd_opipe_doorsvc.c  svc-smbd
+server.xml            smbd_logon.c          smbd_share_doorsvc.c
+smbd.h                smbd_main.c           smbd_spool.c
+```
+
+On the far extreme end of these multi-command directories is the `sgs`
+directory. `sgs` stands for the Software Generation Suite, which comes from Unix
+System V. This contains everything related to the link-editor ld(1),
+the runtime link-editor ld.so.1(1), tools like elfdump(1) and
+nm(1), and libraries that are private to `sgs` such as libelf(3LIB).
+Just as the `smbsrv` directory contains multiple makefiles to help share and
+drive the build process, there are several for `sgs`. For example if we look
+into the directory we see:
+
+```
+$ ls -F cmd/sgs
+0@0/              error/            libld/            packages/
+Makefile          gprof/            liblddbg/         prof/
+Makefile.com      include/          libldmake/        pvs/
+Makefile.sub      lari/             libldstab/        ranlib/
+Makefile.sub.64   ld/               librtld/          rtld/
+Makefile.targ     ldd/              librtld_db/       rtld.4.x/
+Makefile.var      lddstub/          link_audit/       size/
+ar/               ldprof/           lorder/           symorder/
+crle/             lex/              m4/               test/
+dump/             libconv/          mcs/              tools/
+elfdump/          libcrle/          messages/         tsort/
+elfedit/          libdl/            moe/              unifdef/
+elfwrap/          libelf/           nm/               yacc/
+$
+```
+
+So while `sgs` is in the command directory, it does end up containing a few
+libraries, some of which are private to the implementation of the commands. All
+in all, the `cmd` section is the one that has the most flexibility there.
+
+#### Building Native Programs
+
+One thing that various components need to do is build a program that needs to
+run on the build host to help aid in the construction of the actual program. An
+example of this is done as a part of building nawk(1). When building a
+native program it needs to be extra careful to actually build against the build
+system's libraries and headers as well as using the native compiler as opposed
+to the one that builds programs for the target system. As an example, here's a
+part of `nawk`'s `Makefile.targ`:
+
+```
+maketab: maketab.c
+        $(NATIVECC) -O maketab.c -o $@ $(LDLIBS)
+
+proctab.c: maketab
+        rm -f $@; ./maketab > $@
+```
+
+What we see here is that we're explicitly using the `NATIVECC` macro. In
+addition, it's important to make sure that the LDLIBS for the `maketab` program
+do not point into the general proto area and can only point to the build
+system's libraries and headers.
+
+#### Third Party Software
+
+Third party software is included in various parts of commands. As a part of
+that, there are two different files which are added to describe this state. If
+we look at the `compress` command we see:
+
+```
+$ ls cmd/compress
+Makefile                   THIRDPARTYLICENSE.descrip  inc.flg
+THIRDPARTYLICENSE          compress.c
+```
+
+Here the file `THIRDPARTYLICENSE` contains the contents of the license itself.
+Where `THIRDPARTYLICENSE.descrip` describes what components the license covers.
+
+### Adding New Commands
+
+Adding new commands is relatively straightforward. There are two different parts
+to adding a new command. The first is the actual source code for that command
+where as the second is related to hooking it into the larger build system. To
+help illustrate this we're going to start with a simple example of a new command
+called `gethrtime` which uses the wonderful library function
+gethrtime(3C).
+
+#### Writing the Command
+
+To get started we're going to do all of this work from inside of a `bldenv`
+environment. If you find yourself rusty, review the [Workflow
+section](./workflow.html). To start off with, we need to make a new directory
+for our command, copy the prototype files, and then write the new ones. Because
+our command is called `gethrtime` we're going to name its directory simply
+`gethrtime` and the code will all be inside of a single C file called
+`gethrtime.c`. Similarly, because we only need one makefile for this as we're
+only building the native target, we'll put that in a file called `Makefile`.
+Here's how we start with that:
+
+```
+$ cd cmd
+$ mkdir gethrtime
+$ cd gethrtime
+$ cp ../../prototypes/prototype.Makefile Makefile
+$ cp ../../prototypes/prototype.c gethrtime.c
+$
+```
+
+Recall from the [layout section](./layout.html) that the prototypes are versions of file that are
+all set up for use. They already have the necessary copyright blobs and have
+some nice sections for you to fill out. So, next we'll write the `gethrtime.c` C
+file. Our program is simple, takes no arguments, and outputs the current high
+resolution timestamp.
+
+```
+$ vi gethrtime.c
+$ cat gethrtime.c
+/*
+ * This file and its contents are supplied under the terms of the
+ * Common Development and Distribution License ("CDDL"), version 1.0.
+ * You may only use this file in accordance with the terms of version
+ * 1.0 of the CDDL.
+ *
+ * A full copy of the text of the CDDL should have accompanied this
+ * source.  A copy of the CDDL is also available via the Internet at
+ * http://www.illumos.org/license/CDDL.
+ */
+
+/*
+ * Copyright 2013 (c) Joyent, Inc.  All rights reserved.
+ */
+
+/*
+ * A simple example command which outputs the current high resolution time.
+ */
+
+#include <stdio.h>
+#include <sys/time.h>
+
+int
+main(void)
+{
+        hrtime_t start;
+
+        start = gethrtime();
+        (void) printf("%lld\n", start);
+
+        return (0);
+}
+$
+```
+
+The C program itself should be straightforward. However, the `Makefile` deserves
+a bit more attention. Now, let's look at the `Makefile` itself:
+
+```
+$ cat Makefile
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Joyent, Inc.  All rights reserved.
+#
+
+PROG =  gethrtime
+
+include ../Makefile.cmd
+
+all: $(PROG)
+
+install: all $(ROOTPROG)
+
+clean:
+
+lint: lint_PROG
+
+include ../Makefile.targ
+```
+
+Let's step through what all of this actually means. There isn't a lot here,
+that's because a good chunk of it gets taken care of by the makefiles that we
+include: `Makefile.cmd` and `Makefile.targ`. Because of that we simply need to
+define the `PROG` macro. If we don't specify our source files or object files,
+then because of those included makefiles this automatically expands it to
+include `gethrtime.c`.
+
+There are multiple targets that we have to define. The `all` target is supposed
+to build all of the software. Again, because we're leveraging this framework, we
+can rely on it to do all the heavy lifting of building our program for us. The
+`install` target takes care of putting it into the right place. Again, we can
+leverage a lot of the macros that already exist. In this case what `ROOTPROG`
+does is make sure that the program is installed into `/usr/bin` in the proto
+area with its default permissions.
+
+The `clean` target here does nothing. Recall that we have both `clean` and
+`clobber` targets that are valid at different levels. The main distinction is
+that `clean` only gets rid of intermediate files such as object files, where as
+`clobber` does everything that `clean` does and ensures that we also remove all
+of the generated programs. Because we have just one C file here, we can go
+directly to and from the generated binary without intermediary files.
+
+The last target we have is `lint`. It's reason for existence is to run `lint` on
+our program and describing how that works for us. In this case, we can simply
+use the `lint_PROG` target to take care of doing all of this for us. That is
+defined in Makefile.targ to run lint on our program for us.
+
+Now, we can go ahead and build it and test it out.
+
+```
+$ cd cmd/gethrtime
+$ dmake
+...
+$ echo $?
+0
+$ ./gethrtime # The output will be different for everyone
+40274477601353
+$
+```
+
+Now, we need to move on to the next phase.
+
+#### Adding it to the Build
+
+Right now, our new `gethrtime` command exists and is sitting in the tree, but if
+you ran `nightly` it wouldn't actually get built. So to fix that we need to edit
+the list of subdirectories that are listed in `cmd/Makefile`. There are a few
+different lists that exist here. There are different lists of subdirectories for
+programs that are architecture specific and a list for common ones. For
+`gethrtime` we just need to add it to the list `COMMON_SUBDIRS`. So add
+`gethrtime` to that list, maintaining alphabetical order, and then we can go and
+build.
+
+```
+$ cd cmd
+$ vi Makefile
+$ dmake gethrtime
+...
+$
+```
+
+And that's it. Now we've done and added a simple command. To finish up, we'd
+want to go and [add a manual page](#manual-pages) and make sure that our code is
+`cstyle`, `lint`, and `pbchk` are all clean.
+
+#### Multi-Architecture commands
+
+Earlier, we discussed the case where you may need to make both a 32-bit and
+64-bit version of the same command. Here let's take our previous `gethrtime`
+example and now make it suitable for multiple architectures. To do that we need
+to do a few different things:
+
+- Create an architecture specific directory
+- Write a makefile to drive the building of each architecture
+- Move common settings into a `Makefile.com`
+- Rewrite our top-level `Makefile` to recur into architecture subdirectories
+
+To do the first part we need to simply create one directory for each of the
+different machine architectures that this program is going to run on. Since this
+is a common command across both x86 and SPARC, we need to create four
+directories:
+
+```
+$ cd usr/src/cmd/gethrtime
+$ dmake clobber # Clean up from last time
+$ mkdir i386 amd64 sparc sparv9
+$
+```
+
+Now that we've done this, we can go ahead and create a Makefile to drive each of
+the subdirectories and write `Makefile.com` to help drive that. Again, we'll
+start this process by actually copying the prototype file into place.
+
+```
+$ cd usr/src/cmd/gethrtime
+$ cp ../../prototypes/prototype.Makefile Makefile.com
+$ cp ../../prototypes/prototype.Makefile i386/Makefile
+$ cp ../../prototypes/prototype.Makefile amd64/Makefile
+$ cp ../../prototypes/prototype.Makefile sparc/Makefile
+$ cp ../../prototypes/prototype.Makefile sparcv9/Makefile
+```
+
+Now that we've set ourselves up, we're going to focus on getting a single
+architecture building correctly. We'll start with `i386` and also fill out
+`Makefile.com`. Once this works, we can then go ahead and get the other
+architectures plumbed up.
+
+##### The Common Makefile
+
+Our previous Makefile was really quite simple. As a part of this we need to add
+a bit more complexity to our Makefile. This means that instead of directly
+building the program without any intermediary object files, we're going to use
+them. This is also the same technique we would have to use for multi-source
+files. Let's take a look at this Makefile in a bit more detail:
+
+```
+$ cd usr/src/cmd/gethrtime
+$ cat Makefile.com
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Joyent, Inc.  All rights reserved.
+#
+
+PROG =  gethrtime
+OBJS =  gethrtime.o
+SRCS =  $(OBJS:%.o=../%.c)
+
+FILEMODE = 0555
+
+CLEANFILES += $(OBJS)
+
+include ../../Makefile.cmd
+
+CFLAGS += $(CCVERBOSE)
+CFLAGS64 += $(CCVERBOSE)
+
+all: $(PROG)
+
+$(PROG): $(OBJS)
+        $(LINK.c) -o $@ $(OBJS) $(LDLIBS)
+        $(POST_PROCESS)
+
+%.o: ../%.c
+        $(COMPILE.c) $<
+
+clean:
+        -$(RM) $(CLEANFILES)
+
+lint: lint_PROG
+
+include ../../Makefile.targ
+```
+
+To start it off, we have a familiar definition, `PROG`. Again, this is the name
+of the resulting command, mainly, `gethrtime`. Next we have to declare the
+`OBJS` and `SRCS`. We use both throughout the build and to help drive things
+like `lint`. In `OBJS` we place a list of our object files. In this case we only
+have one source file and thus one object file, `gethrtime.c` and `gethrtime.o`
+respectively. If we were to have multiple object files, we would list them all
+in that section. The next definition `SRCS` is a make pattern substitution. What
+might surprise you here is the mapping of a `.o` to `../%.c`. When we do the
+actual build, the current directory of any makefiles will be inside the
+architecture subdirectory, in other words `cmd/gethrtime/i386`. Because all of
+our source files are located in `cmd/gethrtime`, we must refer to it via
+`../%.c`
+
+The next bit we, setting `FILEMODE`, is used as part of the install target.
+You'll notice that the install target isn't actually defined here. It is instead
+defined in the architecture-specific section as it has slightly different things
+that it needs to do based on the machine architecture. Next, we have a bit about
+`CLEANFILES`. Here we're adding the list of object files to it which is in
+addition to anything else that we might have had.
+
+The `CCVERBOSE` values tell the compilers through the tool `cw` to enable
+stricter checking. This roughly translates to the use of `-Wall` in `gcc`. Note
+that we have both `CFLAGS` and `CFLAGS64`. In this case we have independent
+values for the two different architectures.
+
+Now we get to some of the more interesting bits. The next thing that we have
+here are the actual targets. Again, like before, the `all` target will always
+build our program. The next target is a bit more interesting. Here we start to
+use the different pieces of the infrastructure provided to us by our inclusion
+of `Makefile.cmd`. `LINK.c` is a macro which is provided by Makefile.cmd and
+takes care of determining how we should invoke the compiler driver to link a
+binary. Note that we still have to specify all of the `OBJS` that we want to use
+and potentially any `LDLIBS`. `gethrtime` only links against `libc.so` so we do
+not need additional libraries. The `POST_PROCESS` macro does a few different
+things. Among them it uses mcs(1) to update the comment in the binary to
+that of the current build.
+
+The next portion here is the rule to generate the `.o` files from the `.c`
+files. Here we again use another macro, `COMPILE.c` which knows several things
+such as the compiler, the cflags, and the cppflags. You should never directly
+invoke the compiler, only through the macros.
+
+From here on out, things stay relatively straightforward. Previously we didn't
+worry about a `clean` target, but now that we've generated intermeidate object
+files we have to go through and clean them up. The `lint` target is the same as
+before. Finally, we end things with an include of `Makefile.targ` from inside of
+the `cmd` directory.
+
+##### The Architecture Makefiles
+
+With this in hand, we should look at the architecture specific directory.
+Compared to the last Makefile, this is actually now rather simple:
+
+```
+$ cat i386/Makefile
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Joyent, Inc.  All rights reserved.
+#
+
+include ../Makefile.com
+
+install: all $(ROOTPROG32)
+```
+
+These two lines are powerful. The first one brings in `Makefile.com` which is
+the common makefile we just finished discussing. Next we have the `install`
+target. You'll note that it doesn't have any recipe, only dependencies. The
+first dependency, on `all`, you'll remember from our common makefile. That takes
+care of building the program. Next we have the `ROOTPROG32` macro. This macro
+ensures that `PROG` gets installed as a 32-bit program under `/usr/bin`.
+
+We can use that same exact makefile in the `sparc` directory. For `amd64` and
+`sparcv9` we need a slightly different `Makefile` in those directories. That
+`Makefile` looks like:
+
+```
+$ cat i386/Makefile
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Joyent, Inc.  All rights reserved.
+#
+
+include ../Makefile.com
+include ../../Makefile.cmd.64
+
+install: all $(ROOTPROG64)
+```
+
+There are only two differences here. After we included `Makefile.com` we needed
+to include `Makefile.cmd.64`. This makes sure that we end up using a different
+set of definitions appropriate for 64-bit architectures. Secondly we had to
+change install dependency from `ROOTPROG32` to `ROOTPROG64` as we're building
+the 64-bit version of the command.
+
+We can copy these directly into the directories for the `SPARC` architectures.
+We'll copy the `i386` makefile into the `sparc` directory and the `amd64` one
+into `sparcv9`.
+
+```
+$ cd cmd/gethrtime
+$ cp i386/Makefile sparc/
+$ cp amd64/Makefile sparcv9/
+$
+```
+
+##### Driving the Build: The Makefile
+
+The last piece we need is to set up a makefile to drive this. We need to replace
+our previous version of `cmd/gethrtime/Makefile`. This will transform into
+something which runs `make` recursively throughout the subdirectories. Most of
+our work here is just to spawn another copy of make for our children. That's
+slightly less true for `install` as there we have to handle the creation of
+`/usr/bin/gethrtime` which will be a hard link to `isaexec`. Let's take
+a look at this makefile.
+
+```
+$ cd cmd/gethrtime
+$ cat Makefile
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Joyent, Inc.  All rights reserved.
+#
+
+PROG =  gethrtime
+
+include ../Makefile.cmd
+
+SUBDIRS =               $(MACH)
+$(BUILD64)SUBDIRS +=     $(MACH64)
+
+all     :=      TARGET = all
+install :=      TARGET = install
+clean   :=      TARGET = clean
+clobber :=      TARGET = clobber
+lint    :=      TARGET = lint
+
+all clean clobber lint: $(SUBDIRS)
+
+install: $(SUBDIRS)
+        -$(RM) $(ROOTPROG)
+        -$(LN) $(ISAEXEC) $(ROOTPROG)
+
+$(SUBDIRS): FRC
+        @cd $@; pwd; $(MAKE) $(TARGET)
+
+FRC:
+
+include ../Makefile.targ
+$
+```
+
+You'll see that we start of by declaring `PROG` again. You might ask why we're
+doing this, but the answer lies in our `install` target where we end up needing
+to create `/usr/bin/gethrtime`. The next thing we do is declare that one of the
+subdirectories we need to descend into is `MACH`. This is set to be the basic
+32-bit architecture of the machine that we're building. You'll see that the
+addition of `MACH64` is set based on the contents of `BUILD64`. The `BUILD64`
+macro will evaluate to the character `#` if we are not building the 64-bit
+target and only the 32-bit target.
+
+The next section are all conditional assignments. We use this as part of our
+strategy to recurse. The general strategy for the subdirectories is that we want
+to run the same target inside each of them, these assignments are how we ensure
+that the `TARGET` macro is correct when we execute the `SUBDIRS` recipe. If we
+follow along, we'll see that most of our targets just depend on `SUBDIRS`. In
+general, this is exactly what you want.
+
+Let's briefly pick apart the `install` target. It has a dependency on `SUBDIRS`.
+This is very important, without this we will not end up descending into
+architecture subdirectories and running the install. The next bit creates the
+hard link from `/usr/lib/isaexec` to `/usr/bin/gethrtime`. You'll note that we
+explicitly remove the old link before creating the new one. This is a common
+motif in all of our makefiles and while we haven't been calling it directly,
+it's been happening every time that we ran a recipe for macros such as
+`ROOTPROG32`.
+
+The next section declares the recipe for `SUBDIRS`. We have it depend on a phony
+target which does not exist. This will ensure that we always run the recipe. The
+recipe itself just changes into the child directory and then runs make with the
+same target that the original makefile was invoked with. We follow this up with
+the specific definition for FRC. Because this does not actually generate
+anything, we can remain confident that it will always cause the `SUBDIRS` target
+to be out of date and thus cause us to run again. To wrap everything up, we do
+one last include for `Makefile.targ`. This includes some of the various
+definitions that we use such as `lint_PROG`.
+
+#### Adding Multiple Source Files
+
+Now that we're this far, adopting this setup to have multiple source files is
+actually quite simple. There are two changes that we need to make to our
+`Makefile.com` file. The first is to append the new object file to the `OBJS`
+variable. The second is to change how we're handling the `lint` target.
+Currently the `lint` target is set to `lint_PROG`. We need to change that to
+`lint_SRCS`. While the `SRCS` assignment we made in `Makefile.com` earlier may
+have been mysterious, this is one of the places where it gets used. If we make
+those two changes and say we have a new file called `foo.c` our Makefile.com
+looks like:
+
+```
+$ cat cmd/gethrtime/Makefile.com
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Joyent, Inc.  All rights reserved.
+#
+
+PROG =  gethrtime
+OBJS =  gethrtime.o foo.o
+SRCS =  $(OBJS:%.o=../%.c)
+
+FILEMODE = 0555
+
+CLEANFILES += $(OBJS)
+
+include ../../Makefile.cmd
+
+CFLAGS += $(CCVERBOSE)
+CFLAGS64 += $(CCVERBOSE)
+
+all: $(PROG)
+
+$(PROG): $(OBJS)
+        $(LINK.c) -o $@ $(OBJS) $(LDLIBS)
+        $(POST_PROCESS)
+
+%.o: ../%.c
+        $(COMPILE.c) $<
+
+clean:
+        -$(RM) $(CLEANFILES)
+
+lint: lint_SRCS
+
+include ../../Makefile.targ
+
+$
+```
+
+To add any additional source files, all you have to do is append it to the list
+in `OBJS`. If you need to add a file which isn't a C file, say an assembly file
+or a file written using `lex` or `yacc`, then you'll need to also add a new
+pattern rule in `Makefile.com` to transform that. For something like `lex` and
+`yacc` you would write a rule that went from say a `.l` file to a `.c` file and
+then existing rule would take you the rest of the way.
+
+#### CTF Support
+
+Having `CTF` data in programs is essential for debugging run away commands. For
+more on `CTF`, please see ctf(4). While every kernel module and a majority of
+libraries in the system have CTF data, the same is not true for commands. Adding
+CTF itself, is really quite easy though. We need to once again edit
+`Makefile.com`. The `cmd` makefiles already have on that adds in all the hooks
+we need to add CTF support. We'll need to add a line to include the file
+`Makefile.ctf` right after we include `Makefile.cmd`.
+
+The next thing we need to do is make sure that the rules in `Makefile.com`
+include the correct post processing commands. There are generic post processing
+macros which `Makefile.ctf` hooks into. What you need to add is a call to
+`POST_PROCESS_O` after you build object files and a call to `POST_PROCESS` after
+you build executables or shared libraries. Once you make those changes, you can
+run `dmake clobber` and `dmake install` again. We can verify that we in fact
+have `CTF` data by checking for the `.SUNW_ctf` section with elfdump(1).
+Let's put this all together:
+
+```
+$ cd cmd/gethrtime
+$ vi Makefile.com
+$ cat Makefile.com
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Joyent, Inc.  All rights reserved.
+#
+
+PROG =  gethrtime
+OBJS =  gethrtime.o
+SRCS =  $(OBJS:%.o=../%.c)
+
+FILEMODE = 0555
+
+CLEANFILES += $(OBJS)
+
+include ../../Makefile.cmd
+include ../../Makefile.ctf
+
+CFLAGS += $(CCVERBOSE)
+CFLAGS64 += $(CCVERBOSE)
+
+all: $(PROG)
+
+$(PROG): $(OBJS)
+        $(LINK.c) -o $@ $(OBJS) $(LDLIBS)
+        $(POST_PROCESS)
+
+%.o: ../%.c
+        $(COMPILE.c) $<
+        $(POST_PROCESS_O)
+
+clean:
+        -$(RM) $(CLEANFILES)
+
+lint: lint_PROG
+
+include ../../Makefile.targ
+$ dmake clobber
+...
+$ dmake install
+...
+$ elfdump -c i386/gethrtime | grep .SUNW_ctf
+Section Header[31]:  sh_name: .SUNW_ctf
+$
+```
+
+If you do not see any output from `elfdump`, then CTF data was not properly
+generated. A common reason for this happening is forgetting to clobber and
+install again. You may see output but with a different number for the 'Section
+Header', that is perfectly fine. Assuming that it worked, you're good to go and
+now have useful CTF data for debugging.
+
+## Libraries
+
+Where as commands form the human interfaces to illumos, libraries make up the
+programmatic interfaces to the system. You can find all of the libraries inside
+of `usr/src/lib`.
+
+Libraries generally fall into two different categories, public libraries and
+private libraries. Public libraries are the common programming interfaces that
+everyone expects. These libraries are what implement the standard C library
+calls such as 'open(2)' and 'strlen(3C)'.  There are also libraries which are
+just used to implement system commands. For example, something like `dladm(1M)`
+uses the library `libdladm.so.1` to help implement some of its functionality.
+
+Libraries are always built and designed to support both 32-bit and 64-bit
+programs. This practice is referred to as *multilib*. 32-bit libraries for a
+given architecture are found in `/usr/lib` and the 64-bit libraries are found in
+`/usr/lib/64`. With one or two rare exception and unfortunate exceptions, the
+libraries in illumos are all written in the C programming Language.
+
+Unlike the commands, the libraries have a much more uniform and coherent
+structure. Let's take a look at it.
+
+### Parts of a Library
+
+Let's take a look at the library `libproc` which is found in
+`usr/src/lib/libproc`. `libproc` is the library that implements all of the
+various `proc(1)` tools like `pfiles(1)` and `pstack(1)`. Let's move into that
+directory and look at the top level directory.
+
+```
+$ cd usr/src/lib/libproc
+$ ls -F
+amd64/        common/       i386/         Makefile      Makefile.com  sparc/
+sparcv9/
+```
+
+At this top level we can see that we have two different makefiles which control
+different parts of the compilation process and then there are five directories.
+The `common` directory contains all of the code, headers, mapfiles, and lint
+libraries that are common to all architectures. For most libraries, this will
+contain all of the code and headers. Next, each library should have an
+architecture specific directory for each supported architecture. That's why you
+see one for both 32-bit and 64-bit x86 and SPARC. The top level Makefile
+recurses into all of the architecture-specific subdirectories to build the
+actual library and takes care of a few targets itself related to headers and
+message files.
+
+`Makefile.com` on the other hand is a makefile that contains all of the common
+aspects of building the library. This makefile is never run directly, rather
+this common makefile is included by each of the architecture makefiles.
+
+The architecture-specific directories contain makefiles that drive the actual
+build process. The top-level 'Makefile' will recurse into them and invoke the
+corresponding target. This is similar to multiple architecture commands. These
+directories may also include code. For example, if we look at the `i386`
+directory for `libproc` we'll see the following:
+
+```
+$ cd lib/libproc/i386
+$ ls
+Makefile        Pisadep.c
+$
+```
+
+In the case of libproc in addition to the Makefile we have an additional source
+file that's specific to the i386 build. As part of building, the various objects
+will show up in the architecture specific directories.
+
+### Mapfiles, Public Interfaces, and Versioning
+
+While every library is different, there is one thing which is the same across
+every library: they have a mapfile. That is found as `common/mapfile-vers` so if
+you consider `libproc` that means the file is located at
+`usr/src/lib/libproc/common/mapfile-vers`. Mapfiles are very important and they
+should be manipulated very carefully. Every mapfile refers you to read
+`README.mapfiles` which can be found in `usr/src/lib`. While this guide will
+cover some of the basics, you should read that file if you're manipulating any
+mapfile.
+
+We generally use mapfiles to control what symbols in shared libraries can be
+used by external programs. The mapfile is used as part of the linking process.
+The linker will ensure that any symbol that is not listed in the mapfile is not
+visible to other programs which would like to use that library for linking.
+Simply not including a prototype in a header file is not sufficient!
+
+The mapfile also takes care of versioning the various symbols that exist in the
+library. Symbols are broken down into two categories, public and private. A
+private symbol means that this symbol, generally a function, is an
+implementation detail of illumos. Private symbols can have their ABI and
+semantics changed at any time or be removed entirely! Public symbols on the
+other hand are the exact opposite. Once a public symbol is introduced, illumos
+guarantees to users that this function is a stable and committed interface,
+meaning that we will go out of our way to make sure that not only the API, but
+the ABI are preserved. As an example, `libc` provides the traditional `open(2)`
+function. That function is a public symbol and is inside of libc's mapfile.
+
+Libraries themselves have versions. When shared libraries first came out this
+was expressed by what's called the `soname` or shared object name. If we take
+`libc` as an example, its soname is `libc.so.1`. The version of the soname comes
+from that version suffix. When a program gets compiled and links against a
+shared library, that soname is included in the program's ELF headers. When the
+program is executed or a shared library is loaded, all of the mentioned
+dependencies will be found and loaded by the runtime link-editor.
+
+Versioning of the soname was notated as NAME.MAJOR.MINOR.MICRO. Whenever the
+major version changed, the library was known to have broken both API and ABI
+compatibility. While this worked, it wasn't the best solution. The big problem
+with this versioning scheme is that it requires programs to either be rebuilt so
+they can find the newer library or a series of symlinks to be updated from one
+version to another.
+
+To solve this problem the notion of a symbol version became a first class
+entity. Every time a new set of symbols is introduced into illumos it is added
+to a new version in the mapfile-vers file. When the shared library is built, it
+notes which symbols are related to which versions. When a program is linked
+against a library, in addition to recording the name of the library, it also
+encodes the minimum version that it needs. Then, when a program or shared
+library are used, the system looks for a library with that minimum version.
+
+The major version of any library is only changed when some public incompatible
+change is introduced. Doing this is a big challenge and requires a lot of
+careful thought and design. It is very easy to have both the old version and the
+new version of a library end up in a program's address space and if careful
+engineering is not taken, the results can be disastrous.
+
+### The Standard Library Makefiles
+
+A standard library has three different classes of makefiles. The top-level
+ISA-independent makefile. The ISA-dependent makefiles which are found in
+directories like `i386` and `sparcv9` and the makefile that is common to the
+ISA-dependent files, `Makefile.com`. Let's walk through each of these. For this
+example we'll use `libpcidb` which is a library that provides an interface to
+the PCI database library for use by programs like `prtconf(1M)`.
+
+#### Top level Library Makefile
+
+We'll start with it's top level makefile:
+
+```
+$ cd usr/src/lib/libpcidb
+$ cat Makefile
+#
+# CDDL HEADER START
+#
+# The contents of this file are subject to the terms of the
+# Common Development and Distribution License (the "License").
+# You may not use this file except in compliance with the License.
+#
+# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+# or http://www.opensolaris.org/os/licensing.
+# See the License for the specific language governing permissions
+# and limitations under the License.
+#
+# When distributing Covered Code, include this CDDL HEADER in each
+# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+# If applicable, add the following below this CDDL HEADER, with the
+# fields enclosed by brackets "[]" replaced with your own identifying
+# information: Portions Copyright [yyyy] [name of copyright owner]
+#
+# CDDL HEADER END
+#
+#
+# Copyright (c) 2012 Joyent, Inc.  All rights reserved.
+# Use is subject to license terms.
+#
+
+include ../Makefile.lib
+
+HDRS = pcidb.h
+HDRDIR = common
+
+SUBDIRS = $(MACH) 
+$(BUILD64)SUBDIRS += $(MACH64)
+
+all := TARGET = all
+clean := TARGET = clean
+clobber := TARGET = clobber
+install := TARGET = install
+lint := TARGET = lint
+
+.KEEP_STATE:
+
+all clean clobber lint: $(SUBDIRS)
+
+install: install_h $(SUBDIRS)
+
+install_h: $(ROOTHDRS)
+
+check: $(CHECKHDRS)
+
+$(SUBDIRS): FRC
+	@cd $@; pwd; $(MAKE) $(TARGET)
+
+FRC:
+
+include ../Makefile.targ
+$
+```
+
+Importantly, the very first thing that this makefile does is include the file
+`../Makefile.lib`. Where as commands have a bit more haphazard structure,
+libraries themselves are much more structured and uniform.
+
+Next we have a few definitions that are related to header files and to the
+subdirectories. If a library didn't have any header files, then it could go
+ahead and skip declaring `HDRS` and `HDRDRIR`. Because our header is
+ISA-independent we can specify if in `HDRS` and we specify its location in
+`HDRDIRS`. If for some reason our header really was ISA-specific, then we would
+not be allowed to declare any definitions related to headers here. They would
+have to go in a combination of `Makefile.com` and the ISA-specific makefiles.
+
+The next bit we have are the subdirectories. We always will descend into
+`$(MACH)` which specifies the target machine architecture to build for. Next, we
+always add the line that appends `$(MACH64)`. It's actually important that the
+`$(BUILD64)` flag is there. illumos supports building just a 32-bit version.
+When that is enabled, `$(BUILD64)` evaluates to the `#` character, which is a
+comment in make and so that doesn't get appended.
+
+Next up we have a series of conditional assignments. This is the list of targets
+that we support and will recurse into our subdirectories for. Recall that the
+`:=` says that when the current make target is the specified one, do the
+following variable assignment. This pattern allows us to have a slightly simpler
+set of makefile rules for when we run recurse into the ISA-directories for
+targets.
+
+The next important part is where we define all of the targets which are
+ISA-dependent and have them depend on `$(SUBDIRS)`. At a minimum there will
+always be what you see above: specifically `all`, `clean`, `clobber`, and
+`lint`. By depending on `$(SUBDIRS)` and using the conditional assignment, we
+know for sure that we will recurse into each of the subdirectories and invoke
+make with our desired target.
+
+Next we have the `install` target. If there are no header files, then the
+install target should be up with all of the others. However, because we do have
+header files we instead have it depend on the `install_h` target which is
+specifically installing header files and then also have it depend on
+`$(SUBDIRS)` as `install` is an ISA-specific target.
+
+Following that we have `install_h`. `Makefile.lib` which we included earlier
+already has a lot of rules for installing headers for us, so to simplify life
+all we need to do is fill out the `HDRS` and `HDRDIR` variables we did earlier
+and then depend on `$(ROOTHDRS)`.
+
+Because we have header files, we also have to fill out the `check` target to
+check the validity of our header files. Just like in `install_h`, `Makefile.lib`
+takes care of a lot of the heavy lifting. All we need to do is have the target
+depend on `$(CHECKHDRS)`.
+
+Finally we get to the big part of it all, the definition of `$(SUBDIRS)`. Here
+we depend on `FRC` which is effectively a sentinel. Because `FRC` does not
+exist, it will cause us to always end up invoking `$(SUBDIRS)` which is exactly
+what we want. This doesn't mean that we always will end up rebuilding every
+library every time, but because that is the responsbility of the ISA-specific
+makefile, we need to make sure that we always invoke it.
+
+To finish things off we declare `FRC` to depend on nothing and have no
+generation rules and then finally include `Makefile.targ`.
+
+#### Common Library Makefile
+
+A libraries `Makefile.com` is where all the library-specific customizations take
+place. This includes everything from defining the name of the library to the
+various source files. Let's go take a look at what this looks like now for
+`libpcidb`:
+
+```
+$ cd usr/src/lib/libpcidb
+$ cat Makefile.com
+#
+# CDDL HEADER START
+#
+# The contents of this file are subject to the terms of the
+# Common Development and Distribution License (the "License").
+# You may not use this file except in compliance with the License.
+#
+# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+# or http://www.opensolaris.org/os/licensing.
+# See the License for the specific language governing permissions
+# and limitations under the License.
+#
+# When distributing Covered Code, include this CDDL HEADER in each
+# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+# If applicable, add the following below this CDDL HEADER, with the
+# fields enclosed by brackets "[]" replaced with your own identifying
+# information: Portions Copyright [yyyy] [name of copyright owner]
+#
+# CDDL HEADER END
+#
+#
+# Copyright (c) 2012 Joyent, Inc. All rights reserved.
+#
+
+LIBRARY = libpcidb.a
+VERS = .1
+OBJECTS = pcidb.o
+
+include ../../Makefile.lib
+
+LIBS = $(DYNLIB) $(LINTLIB)
+
+SRCDIR = ../common
+
+LDLIBS += -lc
+
+$(LINTLIB) := SRCS = $(SRCDIR)/$(LINTSRC)
+
+.KEEP_STATE:
+
+all: $(LIBS)
+
+lint: lintcheck
+
+include ../../Makefile.targ
+$
+```
+
+Let's take this apart. First off, this library consists of one source object,
+`pcidb.o` which comes from `common/pcidb.c`. Now, the library itself is called
+`libpcidb.so`, but the makefiles still start from the basics of when we had
+statically linked libraries that were contained in `.a` files. So let's take the
+first two definitions apart.
+
+First we set the value of LIBRARY to `libpcidb.a`. The name of the library is
+going to be the part before the `.a`. Next we have the version. This refers to
+the current version of the library. In this case, that would be `.1` as this is
+the first major version. If this were not the first major version for some
+reason, take for example, libldap5, then `VERS` would be changed to reflect
+that. When you combine the originally `LIBRARY` value and the `VERS` value, that
+will get transformed in this case into `libpcidb.so.1`, which is exactly what we
+want.
+
+After that we set the value of `OBJECTS` which should be the name of all the
+`.o` files that end up making this library whether they are compiled from C
+sources, auto-generated, or something else happens.
+
+Next, we again include `Makefile.lib`. You'll note that we go up two different
+directories as opposed to the top-level makefile which went up only one. This
+file will be included from inside of the ISA-specific library makefiles
+therefore our paths need to be relative to that.
+
+Following that we declare `LIBS`. This should always be set to `$(DYNLIB)
+$(LINTLIB)` which takes care of making sure that whenever we're invoked we're
+taking care of both the actual shared object and the corresponding lint library.
+We also specify where to find the actual source code which will almost always be
+in `../common`.
+
+All of the various flags that one would want to pass to the compiler,
+pre-processor, and linker need to be specified at this point, including the set
+of libraries which this library depends on. Flags for the pre-processor should
+_append_ to `CPPFLAGS`; compiler, `CFLAGS`; linker, `LDFLAGS`; and library
+dependencies, `LDFLAGS`. Note that the system does set other values for these,
+so it is important that you use the `+=` assignment and nothing else for these
+variables. You don't have to worry about making sure that your library uses
+position independent code or anything else that you might commonly pass for a
+library, the illumos makefiles take care of that for you.
+
+There are a few targets that all libraries will end up defining in
+`Makefile.com`, specifically `lint` and `all`. `all` should simply depend on
+`$(LIBS)` and `lint` on `lintcheck`. If your library requires specific targets,
+for example one of your object files will come from something like `lex(1)` or
+`yacc(1)`, then you'll need to add additional rules. However, if you do not have
+anything special, you should not be adding your own rules to build various
+aspects of your library excepting very specific and rare situations.
+
+To finish off the makefile, you should include `Makefile.targ` and again
+remember to watch out for the fact that you're including this a subdirectory
+lower than the file exists.
+
+#### ISA-specific Library Makefile
+
+The ISA specific Makefile's are generally fairly straightforward for most
+libraries. The most basic one has all of two lines for a 32-bit ISA and three
+lines for a 64-bit ISA. They look roughly like:
+
+```
+$ cat lib/libpcidb/i386/Makefile 
+...
+include ../Makefile.com
+
+install: all $(ROOTLIBS) $(ROOTLINKS) $(ROOTLINT)
+$ cat lib/libpcidb/amd64/Makefile
+...
+include ../Makefile.com
+include ../../Makefile.lib.64
+
+install: all $(ROOTLIBS64) $(ROOTLINKS64) $(ROOTLINT64)
+```
+
+Let's take these apart. The very first thing that they both do is include our
+library's `Makefile.com`. Recall that this makefile has all the common targets
+and definitions that exist and describe how to build the library with a great
+deal of help from the top level library makefiles. Next, if we have a 64-bit
+library, we also include the support `Makefile.lib.64`. This sets up all the
+necessary portions for building a 64-bit deliverable, including dealing with all
+of the fun around `CFLAGS`, `CPPFLAGS`, and `LDFLAGS`.
+
+Finally, we describe what targets are necessary when we run `install`. It's
+important to note that we never define any recipes for `install` itself. We rely
+on the fact that each of these takes care of one aspect or another of the build.
+The `all` target takes care of building the library itself. `$(ROOTLIBS)`
+installs the library into the proto area. `$(ROOTLINKS)` takes care of
+installing the compilation symlinks for the library into the proto area and
+finally `$(ROOTLINT)` takes care of installing the lint library. The 64-bit
+versions of these macros do the exact same thing, but ensure that everything is
+set for the 64-bit version of them.
+
+Now these makefiles can occasionally get a bit more complicated. Let's take as
+an example, `libproc`'s amd64 library. Here's what it looks like:
+
+```
+$ cat lib/libproc/amd64/Makefile
+...
+# This is a 64-bit build, and as such needs 64-bit ELF support
+CMNOBJS64 =     Psymtab_machelf64.o
+
+include ../Makefile.com
+include ../../Makefile.lib.64
+
+CPPFLAGS += -D_SYSCALL32
+LDLIBS += -lsaveargs
+
+install: all $(ROOTLIBS64) $(ROOTLINKS64)
+```
+
+You'll note that it's `install` target is similar to the others. However, a
+difference is that it adds another object to the set of objects required to
+build and adds in additional `CPPFLAGS` and `LDFLAGS` that are specific to the
+`amd64` target and will not be used in the `i386` target.
+
+As with most of illumos, the basics that we cover here should be everything that
+you need about 95% of the time. If you end up doing something that's a bit more
+complex, that's fine -- just ask and we'll be happy to point you in the right
+direction.
+
+### Adding a New Library
+
+Adding a new library is itself fairly straightforward. Let's write a public
+library that we'll call `libsolo` and has three functions: `libsolo_open`,
+`libsolo_close`, and `libsolo_shoot`. We'll also have one function which will be
+private to the implementation of illumos, `libsolo_isnerfherder`.
+
+To start with we should create all the appropriate directories that we'll need
+to do this work.
+
+```
+$ cd usr/src/lib
+$ mkdir libsolo
+$ cd libsolo
+$ mkdir common i386 amd64 sparc sparcv9
+```
+
+#### Headers, Source, Mapfiles, and Lint Libraries
+
+At this point we're ready to write a simple header file. Here's what ours looks
+like:
+
+```
+$ cat > common/libsolo.h <<EOF
+/*
+ * This file and its contents are supplied under the terms of the
+ * Common Development and Distribution License ("CDDL"), version 1.0.
+ * You may only use this file in accordance with the terms of version
+ * 1.0 of the CDDL.
+ *
+ * A full copy of the text of the CDDL should have accompanied this
+ * source.  A copy of the CDDL is also available via the Internet at
+ * http://www.illumos.org/license/CDDL.
+ */
+
+/*
+ * Copyright (c) 2013 Han Solo.  All rights reserved.
+ */
+
+#ifndef _LIBSOLO_H
+#define _LIBSOLO_H
+
+/*
+ * libsolo public interface
+ */
+
+#include <sys/types.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct han han_t;
+
+extern han_t *libsolo_open(void);
+extern int libsolo_shoot(han_t *, boolean_t);
+extern void libsolo_close(han_t *);
+extern boolean_t libsolo_isnerfherder(han_t *);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _LIBSOLO_H */
+EOF
+$
+```
+Now that we've done that we should go ahead and write our library.
+
+```
+$ cat > libsolo/common/solo.c <<EOF
+/*
+ * This file and its contents are supplied under the terms of the
+ * Common Development and Distribution License ("CDDL"), version 1.0.
+ * You may only use this file in accordance with the terms of version
+ * 1.0 of the CDDL.
+ *
+ * A full copy of the text of the CDDL should have accompanied this
+ * source.  A copy of the CDDL is also available via the Internet at
+ * http://www.illumos.org/license/CDDL.
+ */
+
+/*
+ * Copyright (c) 2013 Han Solo.  All rights reserved.
+ */
+
+#include <libsolo.h>
+#include <stdlib.h>
+
+struct han {
+	boolean_t	hs_isscoundrel;
+	int		hs_nshots;
+}
+
+han_t *
+libsolo_open(void)
+{
+	han_t *hp;
+
+	hp = malloc(sizeof (han_t));
+	if (hp == NULL)
+		return (NULL);
+
+	/* Han is always a scoundrel */
+	hp->hs_isscoundrel = B_TRUE;
+	hp->hs_nshots = 0;
+}
+
+int
+libsolo_shoot(han_t *hp, boolean_t first)
+{
+	/* Han must always shoot first */
+	if (first != B_TRUE)
+		abort();
+
+	hp->hs_nshots++;
+	return (hp->hs_nshots);
+}
+
+boolean_t
+libsolo_isnerfherder(han_t *hp)
+{
+	/* No need to look at the han_t, han is always a nerf herder */
+	return (B_TRUE);	
+}
+
+void
+libsolo_close(han_t *hp)
+{
+	if (hp == NULL)
+		return;
+
+	free(hp);
+}
+EOF
+```
+
+Now that we have our library, we should go write the mapfile. `libsolo` is going
+to be a public library which means that most of its symbols should be public and
+versioned. So let's go write that mapfile!
+
+```
+$ cat > common/mapfile-vers <<EOF
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Han Solo.  All rights reserved.
+#
+
+#
+# MAPFILE HEADER START
+#
+# WARNING:  STOP NOW.  DO NOT MODIFY THIS FILE.
+# Object versioning must comply with the rules detailed in
+#
+#	usr/src/lib/README.mapfiles
+#
+# You should not be making modifications here until you've read the most current
+# copy of that file. If you need help, contact a gatekeeper for guidance.
+#
+# MAPFILE HEADER END
+#
+
+$mapfile_version 2
+
+SYMBOL_VERSION ILLUMOS_0.1 {	# first release of libsolo
+	global:
+		libsolo_close;
+		libsolo_open;
+		libsolo_shoot;
+}
+
+SYMBOL_VERSION ILLUMOSprivate {
+	global:
+		libsolo_isnerfherder;	
+	local:
+		*;
+};
+EOF
+$
+```
+
+Now the last portion that we need is the lint library. Here's what that will
+look like for our library:
+
+```
+$ cat > common/llib-lsolo <<EOF
+/*
+ * This file and its contents are supplied under the terms of the
+ * Common Development and Distribution License ("CDDL"), version 1.0.
+ * You may only use this file in accordance with the terms of version
+ * 1.0 of the CDDL.
+ *
+ * A full copy of the text of the CDDL should have accompanied this
+ * source.  A copy of the CDDL is also available via the Internet at
+ * http://www.illumos.org/license/CDDL.
+ */
+
+/*
+ * Copyright (c) 2013 Han Solo.  All rights reserved.
+ */
+
+/* LINTLIBRARY */
+/* PROTOLIB1 */
+
+#include <libsolo.h>
+EOF
+```
+
+Great, now we've set up all of our source, so let's go onto the makefiles that
+we need.
+
+#### Makefiles
+
+We're going to start off with our `Makefile.com` as that one is going to be the
+most specific to our library.
+
+```
+$ cat > Makefile.com <<EOF
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Han Solo.  All rights reserved.
+#
+
+LIBRARY = libsolo.a
+VERS = .1
+OBJECTS = solo.o
+
+include ../../Makefile.lib
+
+LIBS = $(DYNLIB) $(LINTLIB)
+
+SRCDIR = ../common
+
+LDLIBS += -lc
+
+$(LINTLIB) := SRCS = $(SRCDIR)/$(LINTSRC)
+
+.KEEP_STATE:
+
+all: $(LIBS)
+
+lint: lintcheck
+
+include ../../Makefile.targ
+```
+
+Now, let's take care of our top-level makefile as well.
+
+```
+cat > Makefile <<EOF
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Han Solo.  All rights reserved.
+#
+
+include ../Makefile.lib
+
+HDRS = libsolo.h
+HDRDIR = common
+
+SUBDIRS = $(MACH) 
+$(BUILD64)SUBDIRS += $(MACH64)
+
+all := TARGET = all
+clean := TARGET = clean
+clobber := TARGET = clobber
+install := TARGET = install
+lint := TARGET = lint
+
+.KEEP_STATE:
+
+all clean clobber install lint: $(SUBDIRS)
+
+install: install_h $(SUBDIRS)
+
+install_h: $(ROOTHDRS)
+
+check: $(CHECKHDRS)
+
+$(SUBDIRS): FRC
+	@cd $@; pwd; $(MAKE) $(TARGET)
+
+FRC:
+
+include ../Makefile.targ
+EOF
+```
+
+Now, we'll write the architecture specific makefiles. We'll write the `i386` and
+`amd64` ones and then move copy them into the various `SPARC` related
+directories as they'll be identical.
+
+```
+$ cat > i386/Makefile <<EOF
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Han Solo.  All rights reserved.
+#
+
+include ../Makefile.com
+
+install: all $(ROOTLIBS) $(ROOTLINKS) $(ROOTLINT)
+EOF
+$ cat > amd64/Makefile <<EOF
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2013 Han Solo.  All rights reserved.
+#
+
+include ../Makefile.com
+include ../../Makefile.lib.64
+
+install: all $(ROOTLIBS64) $(ROOTLINKS64) $(ROOTLINT64)
+EOF
+$ cp i386/Makefile sparc/
+$ cp amd64/Makefile sparcv9/
+$
+```
+
+At this point we're ready to go test everything. So let's make sure that we're
+in `bldenv` and give the build a test!
+
+```
+$ cd lib/libsolo
+$ dmake install
+...
+$ echo $?
+0
+$
+```
+
+#### Putting it into the rest of the system
+
+We're not quite done yet, if we want this to always be built then we have to go
+and link it into `usr/src/lib/Makefile`. To do that we have to go and add it to
+the list of `SUBDIRS` in the makefile. There is one last things that we have to
+do:
+
+  * [Write manual pages](#manual-pages)
+
+And with that, you've written a new library.
+
+## Kernel Modules
+
+In illumos, the kernel is devided into three pieces. The first piece is what we
+call `unix`. The second is what we call `genunix` and the third type is kernel
+modules. `unix` and `genunix` form the core of the kernel. `unix` is what we
+call machine-specific, and `genunix` ISA specific. There exists one `genunix`
+for i386 and one for amd64, that can be shared across all the different kinds of
+machines out there because they have a consistent and single instruction set
+that they refer to. On the other hand, `unix` has to take care of everything
+else that makes up a machine beyond the processor. This involves things like
+interrupt controllers, parts of the boot up sequence, etc. Therefore, there may
+be many different `unix` binaries as compared to `genunix`.
+
+The majority of the functionality for the system, such as file systems,
+schedulars, support for devices like HBAs, network controllers, etc. are all
+implemented in terms of kernel modules. Just as libraries and commands may exist
+for a single architecture, the same is true for kernel modules. We'll go through
+a simple example of writing a DDI-based kernel module that's common across all
+platforms. The DDI is the Device Driver Interface, which provides a stable API
+and ABI for the development of device drivers. By providing a standard and
+stable set of interfaces, this simplifies the act of writing a device driver.
+
+### Parts of a Kernel Module
+
+Unlike commands and libraries, where the code and the makefiles that drive them
+live in the same location, this is not true for kernel modules. Consider, for
+example, the `vnic` driver. This driver provides the functionality for creating
+virtual network interfaces per dladm(1M). The source code for the driver lives
+in `uts/common/io/vnic`. Let's take a look at what's there:
+
+```
+$ cd usr/src
+$ ls uts/common/io/vnic/
+vnic.conf  vnic_ctl.c  vnic_dev.c
+$
+```
+
+We see here two different types of files. We have the traditional C language
+files that make up the driver. However, we also have a file called `vnic.conf`.
+Almost every driver has a configuration file that can be used to describe
+various properties of it.
+
+However, as we mentioned earlier, there are no makefiles here. The makefiles are
+kept in the ISA specific directories. Specifically, we'll have a directory that
+drives the compilation process today for both x86 and SPARC. We can find the
+corresponding directories by looking in `uts/intel/vnic` and `uts/sparc/vnic`.
+Let's take a look at its contents:
+
+```
+$ cd usr/src
+$ ls uts/intel/vnic
+Makefile
+$ ls uts/sparc/vnic/
+Makefile
+```
+
+These just have a single makefile. Once a full build finishes, then the object
+files and the kernel module itself will end up in these directories, along side
+the makefiles. Let's go through and take a look at the x86 Makefile:
+
+```
+$ cat uts/intel/vnic/Makefile
+#
+# CDDL HEADER START
+#
+# The contents of this file are subject to the terms of the
+# Common Development and Distribution License (the "License").
+# You may not use this file except in compliance with the License.
+#
+# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+# or http://www.opensolaris.org/os/licensing.
+# See the License for the specific language governing permissions
+# and limitations under the License.
+#
+# When distributing Covered Code, include this CDDL HEADER in each
+# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+# If applicable, add the following below this CDDL HEADER, with the
+# fields enclosed by brackets "[]" replaced with your own identifying
+# information: Portions Copyright [yyyy] [name of copyright owner]
+#
+# CDDL HEADER END
+#
+#
+# Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
+# Use is subject to license terms.
+#
+#
+# Path to the base of the uts directory tree (usually /usr/src/uts).
+#
+UTSBASE = ../..
+
+#
+# Define the module and object file sets.
+#
+MODULE          = vnic
+OBJECTS         = $(VNIC_OBJS:%=$(OBJS_DIR)/%)
+LINTS           = $(VNIC_OBJS:%.o=$(LINTS_DIR)/%.ln)
+ROOTMODULE      = $(ROOT_DRV_DIR)/$(MODULE)
+CONF_SRCDIR     = $(UTSBASE)/common/io/vnic
+
+#
+# Include common rules.
+#
+include $(UTSBASE)/intel/Makefile.intel
+
+#
+# Define targets
+#
+ALL_TARGET      = $(BINARY) $(SRC_CONFILE)
+LINT_TARGET     = $(MODULE).lint
+INSTALL_TARGET  = $(BINARY) $(ROOTMODULE) $(ROOT_CONFFILE)
+
+#
+# Overrides
+#
+CFLAGS          += $(CCVERBOSE)
+LDFLAGS         += -dy -Ndrv/dld -Nmisc/mac -Nmisc/dls
+
+CERRWARN        += -_gcc=-Wno-switch
+CERRWARN        += -_gcc=-Wno-uninitialized
+
+#
+#       Default build targets.
+#
+.KEEP_STATE:
+
+def:            $(DEF_DEPS)
+
+all:            $(ALL_DEPS)
+
+clean:          $(CLEAN_DEPS)
+
+clobber:        $(CLOBBER_DEPS)
+
+lint:           $(LINT_DEPS)
+
+modlintlib:     $(MODLINTLIB_DEPS)
+
+clean.lint:     $(CLEAN_LINT_DEPS)
+
+install:        $(INSTALL_DEPS)
+
+#
+#       Include common targets.
+#
+include $(UTSBASE)/intel/Makefile.targ
+```
+
+Let's go through this Makefile and recap what it means. The Makefile itself is
+already commented, which helps us out. The first definition describes how we get
+back to the root of uts (unix time sharing), the directory that contains
+practically all of the kernel code. This is used both by our own makefile and
+the makefile's that we include.
+
+Next we go through and define what makes up this module. `MODULE` is the name of
+the module that we're building. Next we define `OBJECTS`. This bit of logic says
+take every entry in `$(VNIC_OBJS)`, defined elsewhere, and put it under
+`$(OBJS_DIR)`. The `$(VNIC_OBJS)` are defined elswhere, we'll come back to that
+in a moment. The value of `$(OBJS_DIR)` will vary based on whether we're doing a
+debug or non-debug build and whether or not we're doing a 32-bit or 64-bit
+build. If you do a standard debug and non-debug build you'd see four
+directories: `obj32`, `obj64`, `debug32`, `debug64`. Each of these directories
+would contain the compiled object files and the generated module. `LINTS` does a
+similar transformation on the `VNIC_OBJS`, except this time for running lint.
+The `ROOTMODULE` line, describes where we'll install the driver.  In this case,
+`ROOT_DRV_DIR` expands to `/usr/kernel/drv`.
+
+Just like with libraries, we have common makefiles that describe how to build
+targets and common definitions. With these definitions in place, we go ahead and
+include the first of the two common files.
+
+The following section describes what we're going to be building as a part of
+each phase. Specifically, what does `make all`, `make lint`, and `make install`
+responsible for putting into place. What we see here matches what we expect for
+the vast majority of kernel mdoules. Specifically that the `ALL_TARGET` needs to
+build the binary module as defined by `BINARY` and that it's responsible for
+making sure that the configuration file is there as well. If a module doesn't
+have a configuration file for some reason, then we would the `SRC_CONFFILE` line
+would be dropped. `LINT_TARGET` defines what we do for `dmake lint`, which is to
+run lint for this kernel module. Finally, the `INSTALL_TARGET` takes care of
+making sure that we actually install everything into the proto area. If there
+was no configuration file for the driver, then the `ROOT_CONFFILE` would be left
+out.
+
+The build has default sets of flags for the compiler and link-editor. In the
+overrides section modules mad add additional values for `CPPFLAGS`,
+pre-processor flags, `CFLAGS`, the C compiler flags, `LDFLAGS`, the flags
+for the link-editor, and `CERRWARN`, warnings that are potentially disabled for
+this module. Note that all of these definitions do a `+=`. It's important that
+they don't try and use a normal assignment value, as that would cause conflicts
+between the base set and the additional values. The use of `CCVERBOSE` ensures
+that all warnings are turned on by default. This should *always* be set for
+every module. Similarly `CERRWARN` toggles specific warnings depending on the
+compiler. The leading `-_gcc=` ensures that the value is only passed on to GCC
+and not Sun Studio by the compiler wrapper that illumos uses to take care of the
+differences between compilers.
+
+The `LDFLAGS` is generally the most important part for any kernel module. As you
+can see, ther are two different sets of flags. While these are all in `ld(1)`,
+it's worth talking about them. The first `-dy`, tells the linker it should be
+producing a dynamic object. Next, the `-N` arguments specify the dependencies
+that this module has on other modules. The kernel run-time link-editor (krtld)
+ensures that all of the dependent modules are loaded before loading this module.
+
+The rest of the makefile is the same for almost all modules. Here we define the
+common set of targets, which should always be present, a kernel module should
+only potentially add new ones, and if new ones are being added, it's always
+worth taking a moment to ask why it's really necessary. Finally, we add the
+final include file, the makefile that contains all the common target
+definitions.
+
+Now, recall that we said earlier that we were going to come back to the list of
+`VNIC_OBJS`. Each part of the kernel build that has source code: the common
+portions, the ISA-specific, the platform specific, and machine specific, have
+two files that describe the files and rules for building. Those files are
+`Makefile.files` and `Makefile.rules`. As most modules are generally, completely
+common to the system, they end up having additions in
+`uts/common/Makefile.files` and `uts/common/Makefile.rules`. `Makefile.files`
+describes what objects are part of a build. Here's what
+`uts/common/Makfile.files` has for the `vnic` driver:
+
+```
+VNIC_OBJS +=    vnic_ctl.o vnic_dev.o
+```
+
+This assignment is always done with `+=` because the various makefiles may add
+additional pieces. If the vnic driver had an ISA-specific portion (it doesn't),
+then there would be additional `VNIC_OBJS +=` segments in the other
+`Makefile.file` makefiles.
+
+`Makefile.rules` on the other hand describes the target rules for building
+files. `uts/common/Makefile.rules` has the following entries for the `vnic`
+driver:
+
+```
+$(OBJS_DIR)/%.o:		$(UTSBASE)/common/io/vnic/%.c
+	$(COMPILE.c) -o $@ $<
+	$(CTFCONVERT_O)
+
+$(LINTS_DIR)/%.ln:		$(UTSBASE)/common/io/vnic/%.c
+	@($(LHEAD) $(LINT.c) $< $(LTAIL))
+```
+
+The first one describes the rules for building C files, the second is for
+building lint. These rules are describing the directories to look in for
+building. That should be the only difference between the set of rules, the
+directories to look in, otherwise, the rules should look identical.
+
+### Adding a new Kernel Module
+
+Now that we've described what makes up a kernel module, we'll show an example of
+how to create a primordial driver. Here we're going to write a pseudo-device
+driver, meaning that it presents the interface of a device, but there is no real
+hardware backing it. Many modules are psuedo-device drivers. For a full guide on
+what the code aspects of this should look like, you'll want to read the guide
+on [Writing Device Drivers](http://illumos.org/books/wdd).
+
+#### Kernel module code
+
+The code for device drivers generally lives in `uts/common/io`. Other kinds of
+modules have their own directories in `uts/common`. There is `uts/common/inet`
+for TCP/IP, `uts/common/fs` for file systems, etc.  We'll call this module `nr`
+for not random. When loaded, it creates a minor node in /devices at
+`/devices/pseudo/nr@0:nr` and when read, produces the byte 42, a reliable random
+number generator the person who loves to weight the dice.
+
+For that, the first step is to make the directory `notrandom` under
+`uts/common/io` and then add the source file `notrandom.c` and `notrandom.conf`.
+Here's that:
+
+```
+$ cd usr/src
+$ mkdir uts/common/io/nr
+$ cat > uts/common/io/nr/nr.c <<EOF
+/*
+ * This file and its contents are supplied under the terms of the
+ * Common Development and Distribution License ("CDDL"), version 1.0.
+ * You may only use this file in accordance with the terms of version
+ * 1.0 of the CDDL.
+ *
+ * A full copy of the text of the CDDL should have accompanied this
+ * source.  A copy of the CDDL is also available via the Internet at
+ * http://www.illumos.org/license/CDDL.
+ */
+
+/*
+ * Copyright (c) 2014 Joyent, Inc.  All rights reserved.
+ */
+
+/*
+ * nr: The not random driver
+ */
+
+#include <sys/modctl.h>
+#include <sys/conf.h>
+#include <sys/devops.h>
+#include <sys/stat.h>
+#include <sys/ddi.h>
+#include <sys/sunddi.h>
+#include <sys/types.h>
+#include <sys/open.h>
+#include <sys/cred.h>
+#include <sys/errno.h>
+#include <sys/uio.h>
+#include <sys/ksynch.h>
+
+static dev_info_t *nr_dip;
+
+static int
+nr_open(dev_t *devp, int flag, int otyp, cred_t *credp)
+{
+	return (0);
+}
+
+static int
+nr_close(dev_t dev, int flag, int otyp, cred_t *credp)
+{
+	return (0);
+}
+
+static int
+nr_read(dev_t dev, struct uio *uiop, cred_t *credp)
+{
+	/*
+	 * A real driver should be more efficient, we always supply a single
+	 * byte.
+	 */
+	const unsigned char data = 42;
+
+	return (uiomove((void *)&data, sizeof (data), UIO_READ, uiop));
+}
+
+static int
+nr_getinfo(dev_info_t *dip, ddi_info_cmd_t cmd, void *arg, void **resultp)
+{
+        int ret = DDI_FAILURE;
+
+        switch (cmd) {
+        case DDI_INFO_DEVT2DEVINFO:
+                *resultp = nr_dip;
+                break;
+        case DDI_INFO_DEVT2INSTANCE:
+                *resultp = (void *)((uintptr_t)getminor((dev_t)arg));
+                ret = DDI_SUCCESS;
+                break;
+        default:
+                break;
+        }    
+
+        return (ret);
+}
+
+static int
+nr_attach(dev_info_t *dip, ddi_attach_cmd_t cmd)
+{
+	minor_t instance;
+	if (cmd != DDI_ATTACH)
+		return (DDI_FAILURE);
+
+	if (nr_dip != NULL)
+		return (DDI_FAILURE);
+
+	instance = ddi_get_instance(dip);
+	if (ddi_create_minor_node(dip, "nr", S_IFCHR, instance,
+	    DDI_PSEUDO,  0) == DDI_FAILURE)
+		return (DDI_FAILURE);
+
+	nr_dip = dip;
+	return (DDI_SUCCESS);
+}
+
+static int
+nr_detach(dev_info_t *dip, ddi_detach_cmd_t cmd)
+{
+	if (cmd != DDI_DETACH)
+		return (DDI_FAILURE);
+
+	VERIFY(dip == nr_dip);
+	ddi_remove_minor_node(nr_dip, "nr");
+	nr_dip = NULL;
+	return (DDI_SUCCESS);
+}
+
+static struct cb_ops nr_cb_ops = {
+	nr_open,		/* open */
+	nr_close,		/* close */
+	nulldev,		/* strategy */
+	nulldev,		/* print */
+	nodev,			/* dump */
+	nr_read,		/* read */
+	nodev,			/* write */
+	nodev,			/* ioctl */
+	nodev,			/* devmap */
+	nodev,			/* mmap */
+	nodev,			/* segmap */
+	nochpoll,		/* poll */
+	ddi_prop_op,		/* cb_prop_op */
+	NULL,			/* streamtab  */
+	D_MP			/* Driver compatibility flag */
+};
+
+static struct dev_ops nr_dev_ops = {
+	DEVO_REV,		/* devo_rev */
+	0,			/* refcnt */
+	nr_getinfo,		/* get_dev_info */
+	nulldev,		/* identify */
+	nulldev,		/* probe */
+	nr_attach,		/* attach */
+	nr_detach,		/* detach */
+	nodev,			/* reset */
+	&nr_cb_ops,		/* driver operations */
+	NULL,			/* bus operations */
+	nodev,			/* dev power */
+	ddi_quiesce_not_needed	/* quiesce */
+};
+
+static struct modldrv nr_modldrv = {
+	&mod_driverops,
+	"not random driver",
+	&nr_dev_ops
+};
+
+static struct modlinkage nr_modlinkage = {
+	MODREV_1,
+	&nr_modldrv,
+	NULL
+};
+
+int
+_init(void)
+{
+	return (mod_install(&nr_modlinkage));
+}
+
+int
+_info(struct modinfo *modinfop)
+{
+	return (mod_info(&nr_modlinkage, modinfop));
+}
+
+int
+_fini(void)
+{
+	return (mod_remove(&nr_modlinkage));
+}
+EOF
+$ cat > uts/common/io/nr/nr.conf <<EOF
+EOF
+```
+
+#### Kernel module bindings
+
+Now that we have written the code for this driver, we need to go through and put
+together all of the required entries to allow this to build. This is broken down
+into two parts. The first is the common parts. The second part is a per
+instruction-set architecture component. We'll demonstrate that for x86.
+
+To start with, we need to add the rules necessary to build this. The first thing
+to do is to add the following logic to the file `uts/common/Makefile.rules`:
+
+```
+$(OBJS_DIR)/%.o:                $(UTSBASE)/common/io/nr/%.c
+        $(COMPILE.c) -o $@ $<
+        $(CTFCONVERT_O)
+
+
+$(LINTS_DIR)/%.ln:              $(UTSBASE)/common/io/%.c
+        @($(LHEAD) $(LINT.c) $< $(LTAIL))
+```
+
+The first rule describes how to build the module. With rare exception, the build
+rule should look exactly like this. This file will be included when building
+every kernel module, and this drives the means of building components and
+mapping a given file name like, `nr.o` to the file `uts/common/io/nr/nr.c`. A
+consequence of this design is that it means every file that is used to build a
+given kernel component must have a unique name. The second rule does a similar
+thing, except for building lint.
+
+Next, we add a list of objects that are required for this module. To do that we
+add the following line to the file `uts/common/Makefile.files`:
+
+```
+#
+# Not random driver
+#
+NR_OBJS += nr.o
+```
+
+Here we add all the objects that comprise the module that are located under
+`uts/common`. You'll note that we use the `+=` assignment operator as opposed to
+the `=` operator. This is quite important. This allows different parts of the
+kernel that are more specific to an architecture to add additional objects to
+the build. Consider, for example, the DTrace kernel module. It has file which
+are generic to all architectures, and portions which are highly specific to x86
+and SPARC. As such, those parts are located under `uts/intel/dtrace` and
+`uts/sparc/dtrace`. The objects that are built from there, are listed in
+`uts/intel/Makefile.files` and the build rules in `uts/intel/Makefile.rules`.
+
+Now that that's been put together, we have one last stop, the instruction-set
+architecture makefile. As mentioned earlier, we need one of these for each
+architecture; however, we'll only fill out a single architecture. The other
+architectures are similar.
+
+```
+$ mkdir uts/intel/nr
+$ cat > uts/intel/nr/Makefile <<EOF
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet at
+# http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright 2012 Joyent, Inc.  All rights reserved.
+# Use is subject to license terms.
+#
+
+UTSBASE = ../..
+
+MODULE          = nr
+OBJECTS         = $(NR_OBJS:%=$(OBJS_DIR)/%)
+LINTS           = $(NR_OBJS:%.o=$(LINTS_DIR)/%.ln)
+ROOTMODULE      = $(ROOT_DRV_DIR)/$(MODULE)
+CONF_SRCDIR     = $(UTSBASE)/common/io/nr
+
+include $(UTSBASE)/intel/Makefile.intel
+
+ALL_TARGET      = $(BINARY) $(SRC_CONFILE)
+LINT_TARGET     = $(MODULE).lint
+INSTALL_TARGET  = $(BINARY) $(ROOTMODULE) $(ROOT_CONFFILE)
+
+LDFLAGS += -dy
+
+.KEEP_STATE:
+
+def:            $(DEF_DEPS)
+
+all:            $(ALL_DEPS)
+
+clean:          $(CLEAN_DEPS)
+
+clobber:        $(CLOBBER_DEPS)
+
+lint:           $(LINT_DEPS)
+
+modlintlib:     $(MODLINTLIB_DEPS)
+
+clean.lint:     $(CLEAN_LINT_DEPS)
+
+install:        $(INSTALL_DEPS)
+
+include $(UTSBASE)/intel/Makefile.targ
+EOF
+```
+
+Now that that's done, if you we use `bldenv`, we can go ahead and enter
+`uts/intel/nr` and run `dmake install`. That should build successfully. If not,
+you'll want to double check that you have the entries in
+`uts/common/Makefile.files` and `uts/common/Makefile.rules`.
+
+There's one last step that we need to take to tie the driver into the build: we
+need to indicate that this driver exists and should be built as part of building
+the world of this instruction-set architecture. For that, we turn to
+`Makefile.intel` and add the following line:
+
+```
+DRV_KMODS       += nr
+```
+
+That's it. And with that we now have a fully functional kernel module.
+
+
+## Manual Pages
+
+Manual pages are a very important part of illumos, we take the quality of our
+manual pages quite seriously. Whenever you're creating something, you should
+consider if it requires a manual page. We have manual pages for all public
+interfaces, commands, and drivers. If instead, you're writing something which is
+an implementation detail of the system, then you should not write a manual page
+for it, but you should make sure it is still well commented and understandable.
+The rest of the section discusses what kind of information should be in each
+manual page, a brief primer on the manual page syntax, and a few examples.
+
+### Manual Page Overview
+
+All the manual pages can be found in the source tree under `usr/src/man`. If we
+look under there, we'll see the following:
+
+```
+$ ls -F usr/src/man
+Makefile        man3dat/        man3lgrp/       man3rpc/        man3xnet/
+Makefile.man    man3devid/      man3lib/        man3rsm/        man4/
+man1/           man3devinfo/    man3mail/       man3sasl/       man5/
+man1b/          man3dlpi/       man3malloc/     man3scf/        man7/
+man1c/          man3dns_sd/     man3mp/         man3sec/        man7d/
+man1has/        man3elf/        man3mpapi/      man3secdb/      man7fs/
+man1m/          man3exacct/     man3nsl/        man3sip/        man7i/
+man2/           man3ext/        man3nvpair/     man3slp/        man7ipp/
+man3/           man3fcoe/       man3pam/        man3socket/     man7m/
+man3bsm/        man3fstyp/      man3papi/       man3stmf/       man7p/
+man3c/          man3gen/        man3perl/       man3sysevent/   man9/
+man3c_db/       man3gss/        man3picl/       man3tecla/      man9e/
+man3cfgadm/     man3head/       man3picltree/   man3tnf/        man9f/
+man3commputil/  man3iscsit/     man3pool/       man3tsol/       man9p/
+man3contract/   man3kstat/      man3proc/       man3uuid/       man9s/
+man3cpc/        man3kvm/        man3project/    man3volmgt/
+man3curses/     man3ldap/       man3resolv/     man3xcurses/
+$
+```
+
+Each of these directories corresponds to a different section. Each section is
+potentially broken down into multiple volumes. Take for instance, section 1.
+Section 1 covers commands. However, volume 1 covers normal user commands such as
+`ls`, while volume 1m covers administrative commands such as `reboot`. The use
+of volumes is different from many other systems out there, we use this in
+illumos because it allows for better organization. The following table provides
+an overview of the purpose of the sections:
+
+|| Section || Purpose ||
+|| 1 || Commands ||
+|| 2 || System Calls ||
+|| 3 || C Functions and Libraries ||
+|| 4 || File formats ||
+|| 5 || Miscellany, including Standards, Macros, Environments, etc. ||
+|| 7 || Special Files ||
+|| 9 || Device Driver Interfaces ||
+
+Each section starts with a manual called `Intro` which introduces the section
+and describes what is contained inside of them. To view a given entry, you can
+generally use the format of `%name.%volume`. For example, to get the
+introduction to section 2, you would use, `man Intro.2`. To get the page for the
+C function `strlen`, you could use `man strlen.3c`. Generally references to
+manual pages are written like `open(2)` or `accept(3SOCKET)`. This entry in
+parenthesis tells you the section, and optionally the volume.
+
+#### What Makes a Good Manual Page?
+
+While the question of what makes a good manual page is ultimately subjective,
+there are certain properties that all of these manual pages end up sharing.
+These vary based on whether you are writing a manual page for a command, library
+routine, or driver; however, they have a lot of overlap. There is one central
+goal for a manual page: once the reader has finished reading, they should not
+have any questions on how to use the subject of the manual page, and if they do,
+it's answered by another manual page or document they've been pointed to.
+
+There's a lot of different kinds of content that this covers. illumos has a
+manual page that describe this and some of the basic macros in man(5). Every
+manual page starts off with the following four entries:
+
+- Title
+- Name section
+- Synopsis
+- Description
+
+The title gives the name of the manual page and the section. Multiple functions
+or commands might map to one file, consider the case of read(2) and pread(2).
+They both go to the same manual page whose title is read(2).
+
+The name section, gives the name and a brief one line synopsis of the command.
+There should be one entry here for each command, function, or driver, described
+by this manual page.
+
+The synopsis gives much more detailed information. For library functions it
+describes the header files you need to include and any C pre-processor flags and
+any libraries that you need to link. It also includes the declaration of the
+function. For commands, it instead shows the summary of all the options that the
+command supports, it does not explain what the options mean, that is reserved
+for the OPTIONS section. For drivers, the synopsis should include the files that
+the driver exports and any header files that may be relevant to the driver, if
+those constitute a public interface. If the driver's public interface is instead
+a stable library, then none of the header files should be referenced.
+
+Where as the previous sections were more mechanical in nature, the description
+should be a series of prose that describe usage. The description section should
+give the necessary background to understand why someone would use it. Then, it
+should go into an explanation of how it uses it.
+
+If documenting a function for example, all of the arguments and their use should
+be described. If there are special flags or structures, they should also be
+described here. For example open(2) describes all of the flags that can be
+passed to open and their meaning.
+
+At this point, the actual sections that one uses start to vary, but they cover
+the same set of issues. Notably manual pages should include information on:
+
+- Options for commands
+- Return values and exit codes
+- Errors that may be returned and their meaning
+- Provide examples
+- Involved Files
+- Related manual pages
+- Attributes
+
+If a command has any options, then each option should be described in detail in
+the section called 'OPTIONS'. Generally, a small synopsis of each option and
+any arguments it takes are provided followed by expository text which describes
+the purpose of the option, how it influences and changes the command, and any
+restrictions on the values of any arguments it takes.
+
+Functions generally provide two sections. The first is 'RETURN VALUES' and then
+the second is 'ERRORS'. The return value indicate what to expect when the
+function returns, while the second details what error codes may produced and
+importantly _why_ they were produced. This is very important and needs to be an
+exhaustive list. The errors may be the common set of errors that are associated
+with errno(3C) eg. ENOENT, EINVAL, etc. or they may be a set of errors that are
+specific to a library such as in libdlpi(3LIB).
+
+Programs, on the other hand, should indicate what the meaning of the various
+exit codes returned from the program are. This is usually done in the section
+called 'EXIT STATUS'.
+
+For most people, a manual page without an example is a worthless manual page. In
+general, examples should be provided for each major aspect of functionality,
+more examples cannot hurt. When writing examples for the shell, make sure that
+the proper shell notation is used to indicate if the command must be run for a
+privileged user. `$` should be used for commands that do not require privilege
+and `#` for commands which do. If applicable, the output of the commands should
+be included. For example, if showing an example that produces output, say a list
+command, then you should include an example of that output.
+
+For functions that are part of a library, you should include either a full
+sample program that can be compiled and built, or you should include a
+standalone function that can be placed in its own file and compiled into an
+object file that can be incorporated into a larger program. This all the
+necessary header files should be included. Older manual pages like to elide
+sections of the code in examples, this should be avoided.
+
+Some manual pages have a 'FILES' section. This section describes any files that
+are involved. For example, if a command involves a configuration file, then it
+should list that file in a 'FILES' section and describe its purpose. Devices
+that provide specific devices in `/dev` should mention those files and their
+purpose. Library introduction pages should mention the names of the shared
+objects that they provide.
+
+Finally, most manual pages will end with a list of related manual pages. If
+another manual page is referenced, it should be down there. If there are other
+pages that might be related to the topics described in the current page, then
+they should be included there.
+
+The attributes section of a manual page is often overlooked, however, it is
+quite useful. There are many different kinds of attributes that exist; however,
+there are two primary attributes which are the most important. The first is the
+stability level and the second is the safety in a multi-threaded environment.
+
+The stability attributes allows the user to know whether or not they are using a
+stable and committed interface. Stable and committed interfaces are part of the
+contract between the system and its users. If using a stable interface, illumos
+promises not to break it. However, if a user is not using a stable interface,
+then it may be broken. For many commands, often the options and arguments are
+considered stable, but the command output is not considered stable and stable
+output is generally provided through something like a machine-parseable output
+form. In general, only functions that are considered stable are documented.
+
+The second attribute is specific to functions. The attribute is often called the
+MT-Level. This describes how it will perform in a multi-threaded environment and
+if they are allowed in signal handlers. The full list of the various MT-level
+attributes is in attributes(5). They vary between things which are unsafe at any
+speed in a multi-threaded program to functions which can be safely used in
+various environments. One of the strengths of illumos' manual pages is that they
+describe this kind of information, which might otherwise be lost to the
+intricacies of the source code.
+
+These sections are just the starting points for manual pages and do not
+represent everything that they should cover. For example, a command that has
+machine parseable output, should likely include a subsection on that. Another
+example is something that has a lot of properties, such as the link properties
+of a data link. There, it's entirely reasonable to have another section that
+describes those properties. Similarly, a library overview page might have a list
+of all the errors that they support.
+
+#### Command layout strategies
+
+When documenting a command, the general form is to write a single manual page
+for that command and put it in either section 1 or section 1m depending on
+whether the command is designed as an administrative tool or not. If the command
+has a configuration file with a specific file format, that should also be
+documented in section 4.
+
+#### Function and Library layout strategies
+
+When documenting a new library, an introduction to the library should be placed
+in `3lib`. This should cover an explanation of what the library is for and how
+to use it. It should introduce concepts that are spread throughout the library
+and go through things such as error handling and its use in multi-threaded
+programs. After that, a new section should be created for the library itself,
+which is usually named after it's soname. Consider are earlier example of
+libsolo. It would place manual pages for each public function in libsolo in
+`3SOLO`.
+
+If you're adding a function to the DDI or some other existing section, then it
+should just go into that section. In addition, several of the header files are
+documented in `3head`. These usually correspond to header files for standard C as
+opposed to the header files for a specific library.
+
+#### Writing Manual Pages
+
+While manual pages were historically written in `troff(5)`, manuals are now
+written in `mdoc(5)`, which is an interface that allows for easier programatic
+transformations into other formats. The manual page for `mdoc(5)` has a good
+example, but we'll still go through one for the command `ctfdump(1)`. The
+following is what it's raw manaul page looks like:
+
+```
+.\"
+.\" This file and its contents are supplied under the terms of the
+.\" Common Development and Distribution License ("CDDL"), version 1.0.
+.\" You may only use this file in accordance with the terms of version
+.\" 1.0 of the CDDL.
+.\"
+.\" A full copy of the text of the CDDL should have accompanied this
+.\" source.  A copy of the CDDL is also available via the Internet at
+.\" http://www.illumos.org/license/CDDL.
+.\"
+.\"
+.\" Copyright (c) 2014, Joyent, Inc.
+.\"
+.Dd Oct 4, 2014
+.Dt CTFDUMP 1
+.Os
+.Sh NAME
+.Nm ctfdump
+.Nd dump parts of ctf data from files
+.Sh SYNOPSIS
+.Nm ctfdump
+.Op Fl dfhlsSt
+.Op Fl p Ar parent
+.Op Fl u Ar outfile
+.Ar file
+.Sh DESCRIPTION
+The
+.Nm
+utility dumps and decodes the
+.Sy CTF
+data contained inside of
+.Sy ELF
+objects and raw
+.Sy CTF
+files.
+.Lp
+.Nm
+can dump information about the
+.Sy CTF header ,
+the
+.Sy labels
+encoded in the
+.Sy CTF
+container,
+the types of
+.Sy data objects ,
+the internal
+.Sy string
+table,
+the types of the return function and the arguments for
+.Sy functions ,
+and of course, it displays information about the
+.Sy types
+defined in the
+.Sy CTF
+container.
+.Lp
+.Nm
+can also be used to dump out the raw
+.Sy CTF
+data and send it to another file. When writing out data, it always
+ensures that the
+.Sy CTF
+data is decompressed. In this form, the
+.Sy CTF
+data can be inspected using
+.Nm
+and other tools such as
+.Xr mdb 1 .
+.Lp
+When no options are specified,
+.Nm
+displays all information. However, when the
+.Fl u
+option is used, then no information is displayed by default, unless
+requested through the the appropriate option.
+.Sh OPTIONS
+The following options are supported:
+.Bl -hang -width Ds
+.It Fl d
+.Bd -filled -compact
+Dump the types of symbols that correspond to objects.
+.Ed
+.It Fl f
+.Bd -filled -compact
+Dump the types of the return values and arguments of the functions.
+.Ed
+.It Fl h
+.Bd -filled -compact
+Dump the
+.Sy CTF
+header
+.Ed
+.It Fl l
+.Bd -filled -compact
+Dump all
+.Sy CTF
+labels associated with the file.
+.Ed
+.It Fl p Ar parent
+.Bd -filled -compact
+Use the type information in
+.Em parent
+to supplement output. This is useful when a
+.Nm CTF
+container has been
+.Sy uniquified
+against
+.Em parent .
+This allows
+.Nm
+to use the names of types when used with
+.Fl t .
+.Ed
+.It Fl s
+.Bd -filled -compact
+Dump the internal
+.Sy CTF
+string table
+.Ed
+.It Fl S
+.Bd -filled -compact
+Displays statistics about the
+.Sy CTF
+container.
+.Ed
+.It Fl t
+.Bd -filled -compact
+Dump the type information contained in the
+.Sy CTF
+conatiner.
+.Ed
+.It Fl u Ar outfile
+.Bd -filled -compact
+Copies the uncompressed
+.Sy CTF
+data to the file specified by
+.Em outfile .
+This can be used to make it easier to inspect the raw
+.Sy CTF
+data.
+.Ed
+.El
+.Sh EXIT STATUS
+.Bl -inset
+.It Sy 0
+.Dl Execution completed successfully.
+.It Sy 1
+.Dl A fatal error occured.
+.It Sy 2
+.Dl Invalid command line options were specified.
+.El
+.Sh EXAMPLES
+.Sy Example 1
+Displaying the Type Section of a Single File
+.Lp
+The following example dumps the type section of the file
+.Sy /usr/lib/libc.so.1 .
+.Bd -literal -offset 6n
+$ ctfdump -t /usr/lib/libc.so.1
+- Types ----------------------------------------------------
+
+  <1> int encoding=SIGNED offset=0 bits=32
+  <2> long encoding=SIGNED offset=0 bits=32
+  <3> typedef pid_t refers to 2
+  <4> unsigned int encoding=0x0 offset=0 bits=32
+  <5> typedef uid_t refers to 4
+  <6> typedef gid_t refers to 5
+  <7> typedef uintptr_t refers to 4
+\&...
+.Ed
+.Lp
+.Sy Example 2
+Dumping the CTF data to Another File
+.Lp
+The following example dumps the entire CTF data from the file
+.Sy /usr/lib/libc.so.1
+and places it into the file
+.Sy ctf.out .
+This then shows how you can use the
+.Xr mdb 1
+to inspect its contents.
+.Bd -literal -offset 6n
+$ ctfdump -u ctf.out /usr/lib/libc.so.1
+$ mdb ./ctf.out
+> ::typedef -r /usr/lib/libctf.so.1
+> 0::print ctf_header_t
+{
+    cth_preamble = {
+        ctp_magic = 0xcff1
+        ctp_version = 0x2
+        ctp_flags = 0
+    }
+    cth_parlabel = 0
+    cth_parname = 0
+    cth_lbloff = 0
+    cth_objtoff = 0x8
+    cth_funcoff = 0x5e0
+    cth_typeoff = 0x7178
+    cth_stroff = 0x12964
+    cth_strlen = 0x7c9c
+}
+.Ed
+.Sh INTERFACE STABILITY
+The command syntax is
+.Sy Committed .
+The output format is
+.Sy Uncommitted .
+.Sh SEE ALSO
+.Xr ctfdiff 1 ,
+.Xr dump 1 ,
+.Xr elfdump 1 ,
+.Xr mdb 1 ,
+.Xr ctf 4
+```
+
+There are a few key things to note from this manual page. The first is that
+macros generally start a line and always begin with a `.`. Another thing, is
+that you are not doing any layout yourself, layout is generally done
+automatically by the program. That said, there are also ways to lay out text in
+an absolute way, which should be used for thing like structures or examples.
+
+Manual pages should not be sparse, they should tell you everything that you need
+to know to use a program, a file format, or use a library function.
+
+You'll notice that there are a lot of places where we use the macro `.Sy` and
+the macro `.Em`. The former bolds text, and the latter places it in italics. In
+general, the names of arguments, are always placed in italics, while things like
+types, or keywords, use bold lettering. When referencing other manual pages, you
+should always refer to the full section and subsection identifier. This is
+necessary for distinguishing between a manual page which appears in multiple
+sections.
+
+#### Adding a new manual page
+
+Before you worry about adding a manual page to a new section, you should go
+through and write it first. It's very handy to pass it through the `man` command
+and see what it looks like, before you wire it up in a Makefile. In this case,
+let's consider that we're writing the manual page for `gethrtime(1)` that we
+talked about earlier on. To get started on development, we'll copy the prototype
+manual page into `man/man1` and then start editing.
+
+```
+$ cp prototypes/prototype.man man/man1/gethrtime.1
+$ vi man/man1/gethrtime.1
+$ man -Mman gethrtime.1
+```
+
+Once this is all done, you need to add it to the list of manual pages in the
+directory's Makefile. For each section of the Manual pages, there's a macro
+called `MANFILES`, you just need to add it to that list, and try to maintain
+alphabetical order.
+
+A single manual page may be used for multiple manuals. For example, the manual
+page `man/man2/read.2` is actually the manual page for `read(2)`, `readv(2)`,
+`pread(2)` and `preadv(2)`. To add another link to a page, you need to add the
+manual page to the `MANLINKS` section. Following that, we need to go through and
+add an additional rule to the Makefile. This rule tells the Makefile what the
+source of the link is. For example, for `pread(2)` we have the following line in
+the Makefile:
+
+```
+pread.2                         := LINKSRC = read.2
+```
+
+This line is telling `make` that when the target that we're building is
+`pread.2`, the file that it it should link to is `read.2`. This is indicated via
+the `LINKSRC` variable, which this rule conditionally assigns to based on the
+target.
+
+#### Adding a new section
+
+Occasionally, you need to an entirely new section to the manual. For example,
+when adding the library, `libvnd(3LIB)`, there was new documentation written for
+all of the library interfaces and placed into the section `3vnd`. To add a new
+section, you need to first write your individual manual pages, and then write a
+Makefile for them. After that, you add the section to the top-level Makefile.
+For example:
+
+```
+$ mkdir man/man3vnd
+$ cp prototypes/prototype.Makefile man/man3vnd/Makefile
+$ vi man/man3vnd/Makefile
+$ cat man/man3vnd/Makefile
+#
+# This file and its contents are supplied under the terms of the
+# Common Development and Distribution License ("CDDL"), version 1.0.
+# You may only use this file in accordance with the terms of version
+# 1.0 of the CDDL.
+#
+# A full copy of the text of the CDDL should have accompanied this
+# source.  A copy of the CDDL is also available via the Internet
+# at http://www.illumos.org/license/CDDL.
+#
+
+#
+# Copyright (c) 2014, Joyent, Inc.  All rights reserved.
+#
+
+include		$(SRC)/Makefile.master
+
+MANSECT=	3vnd
+
+MANFILES=	vnd_create.3vnd 	\
+		vnd_errno.3vnd 		\
+		vnd_frameio_read.3vnd 	\
+		vnd_pollfd.3vnd 	\
+		vnd_prop_get.3vnd 	\
+		vnd_prop_iter.3vnd 	\
+		vnd_prop_writeable.3vnd	\
+		vnd_walk.3vnd
+
+MANLINKS=	frameio_t.3vnd		\
+		framevec_t.3vnd		\
+		vnd_close.3vnd		\
+		vnd_frameio_write.3vnd	\
+		vnd_open.3vnd 		\
+		vnd_prop_set.3vnd	\
+		vnd_prop_iter_f.3vnd	\
+		vnd_strerror.3vnd	\
+		vnd_strsyserror.3vnd	\
+		vnd_syserrno.3vnd	\
+		vnd_unlink.3vnd 	\
+		vnd_walk_cb_f.3vnd
+
+# vnd_create.3vnd
+vnd_open.3vnd		:= LINKSRC = vnd_create.3vnd
+vnd_unlink.3vnd		:= LINKSRC = vnd_create.3vnd
+vnd_close.3vnd		:= LINKSRC = vnd_create.3vnd
+
+# vnd_errno.3vnd
+vnd_strerror.3vnd	:= LINKSRC = vnd_errno.3vnd
+vnd_syserrno.3vnd	:= LINKSRC = vnd_errno.3vnd 
+vnd_strsyserror.3vnd	:= LINKSRC = vnd_errno.3vnd 
+
+# vnd_frameio_read.3vnd
+vnd_frameio_write.3vnd	:= LINKSRC = vnd_frameio_read.3vnd 
+framevec_t.3vnd		:= LINKSRC = vnd_frameio_read.3vnd
+frameio_t.3vnd		:= LINKSRC = vnd_frameio_read.3vnd
+
+# vnd_prop_get.3vnd
+vnd_prop_set.3vnd	:= LINKSRC = vnd_prop_get.3vnd
+
+# vnd_prop_iter.3vnd
+vnd_prop_iter_f.3vnd	:= LINKSRC = vnd_prop_iter.3vnd
+
+# vnd_walk.3vnd
+vnd_walk_cb_f.3vnd	:= LINKSRC = vnd_walk.3vnd
+
+.KEEP_STATE:
+
+include		$(SRC)/man/Makefile.man
+
+install:	$(ROOTMANFILES) $(ROOTMANLINKS)
+```
+
+Let's break apart this Makefile. The very first thing it does is include
+`Makefile.master` which defines several of the common definitions and targets.
+The next thing that we declare is the `MANSECT` variable, which declares the
+section of the manual that this is. Because these are the manual pages for the
+`vnd` library, they go into section `3vnd`.
+
+This is followed by a list of actual manual pages that we have in the `MANFILES`
+macro. Each of these is an actual file that exists. We follow this with the list
+of MANLINKS, these are names which we want to have, but aren't in their own
+manual pages, but other existing one. For each entry in `MANLINKS`, we follow it
+up with another line which describes where they come from.
+
+After all of those, we have a few last things to do. We need to include
+`$(SRC)/man/Makefile.man` which pulls in definitions specific to the manual page
+builds, and then finally, we need to list the install target. The install target
+should always be what you see up above: `$(ROOTMANFILES) $(ROOTMANLINKS)`. This
+will ensure that all the files and the corresponding symlinks get installed.
+
+## Wrapping Up
+
+This has been a bit of a whirlwind tour through all the different kinds of
+components that you'll find in illumos. While this isn't exhaustive, it should
+provide a useful starting point.

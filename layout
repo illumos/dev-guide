@@ -1,0 +1,663 @@
+# Source Tree Layout and Makefile System
+
+## Introduction
+
+This section will first take you on a tour of the source tree. After that, it
+will proceed to discuss several of the aspects surrounding the organization of
+our makefiles and where object files show up.
+
+## Source Tree Tour
+
+All sources are found under `usr/src`. This includes both the sources used to
+build the ON consolidation and sources for tools and other peripheral utilities
+needed to build but not shipped as part of illumos. Because it includes only ON
+sources, it does not contain Java, the windowing system, or packaging and
+installation tools. Because of contractual obligations, it may not include all
+code from third-party hardware vendors. The `usr/src` directory has several
+subdirectories which are described here.
+
+  * `cmd`
+
+This directory contains sources for the executable programs and scripts that are
+part of ON. It includes all the basic commands, daemons, startup scripts, and
+related data. Most subdirectories are named for the command or commands they
+provide; however, there are some exceptions listed here.
+
+  * `cmd/Adm`
+
+Miscellaneous key system files, such as crontabs and data installed in `/etc`.
+
+  * `cmd/cmd-crypto`
+
+Basic cryptographic utilities, such as elfsign and digest.
+
+  * `cmd/cmd-inet`
+
+Network commands and daemons, including the Berkeley r-commands, PPP, telnet,
+the inetd super-server, and other network-related utilities.
+
+  * `cmd/fs.d`
+
+Utilities for checking, mounting, unmounting, and analyzing filesystems.
+
+  * `cmd/mdb`
+
+Contains the sources for the modular debugger, `mdb(1)`, the kernel debugger,
+`kmdb(1)`, and the majority of the modules.
+
+  * `cmd/netfiles`
+
+IP port definitions and name service switch configuration files installed into
+/etc.
+
+  * `cmd/ptools`
+
+Utilities for manipulating and observing processes; these are based on proc(4)
+and libproc interfaces.
+
+  * `cmd/sgs`
+
+Software Generation System. This directory contains binary utilities, such as
+`ld(1)`, `ar(1)`, and `mcs(1)`, and development tools such as `lex(1)`,
+`yacc(1)`, and m4(1). Note that this directory also includes several libraries
+and headers used by these tools.
+
+  * `common`
+
+Files which are common among `cmd`, `lib`, `stand`, and `uts`. These typically
+include headers and sources to basic libraries used by both the kernel and user
+programs.
+
+  * `head`
+
+Userland header files (kernel headers are in `uts/`). Note that only libc headers
+should be stored here; other libraries should have their headers in their own
+subdirectories under `lib/`.
+
+  * `lib`
+
+Libraries. Most subdirectories are named for the library whose sources they
+contain or are otherwise self-explanatory.
+
+  * `pkg`
+
+Contains the manifests and pacakge lists for building ips packages from the ON
+sources.
+
+  * `prototypes`
+
+Sample files showing format and copyright notices.
+
+  * `psm`
+
+Platform-specific modules. Currently this contains only OBP and most of the boot
+code.
+
+  * `stand`
+
+Standalone environment code. This is used for booting; for example, code for
+reading from UFS and the network is here.
+
+  * `tools`
+
+Development tools and sources. See README.tools for more information about each
+tool; the file should be updated as tools are added or removed.
+
+  * `ucbcmd`
+
+Commands and daemons installed into `/usr/ucb` (for SunOS 4.x compatibility).
+
+  * `ucbhead`
+
+Header files installed into `/usr/ucb` (for SunOS 4.x compatibility).
+
+  * `ucblib`
+
+Libraries installed into `/usr/ucb` (for SunOS 4.x compatibility).
+
+  * `uts`
+
+Kernel sources are here (UTS == UNIX Time Sharing). There are numerous
+subdirectories of uts which are of interest:
+
+  * `uts/common`
+
+All platform-independent kernel sources. Nearly all of the illumos kernel is
+here; only a few small parts are architecture-dependent.
+
+  * `uts/common/conf`
+
+System configuration parameters.
+
+  * `uts/common/contract`
+
+Code to support process contracts. See `contract(4)` and `libcontract(3LIB)` for
+more information on process contracts.
+
+  * `uts/common/cpr`
+
+CheckPoint-and-Resume support. This implements suspend and resume functionality.
+
+  * `uts/common/crypto`
+
+Kernel cryptographic framework. See `cryptoadm(1M)` for more information.
+
+  * `uts/common/ctf`
+
+Kernel code for handling Compact C Type Format data.
+
+  * `uts/common/des`
+
+Implements the old Data Encryption Standard. This is used by KCF.
+
+  * `uts/common/disp`
+
+Dispatcher, thread handling, and scheduling classes.
+
+  * `uts/common/dtrace`
+
+CPU-independent `dtrace(7D)` kernel support.
+
+  * `uts/common/exec`
+
+Code for handling userland binary executable types (a.out, ELF, etc).
+
+  * `uts/common/fs`
+
+Filesystems.
+
+  * `uts/common/inet`
+
+IP networking subsystem, including IPv6.
+
+  * `uts/common/io`
+
+I/O subsystem. Most of the code in this directory is device drivers (and
+pseudo-device drivers).
+
+  * `uts/common/ipp`
+
+IP policy framework; includes QoS and other traffic management.
+
+  * `uts/common/kmdb`
+
+Kernel modular debugger driver. See `kmdb(1)`.
+
+  * `uts/common/krtld`
+
+Kernel runtime linker/loader. This is responsible for handling loadable modules
+and symbol resolution; it is analogous to ld.so.1, and shares code with it.
+
+  * `uts/common/ktli`
+
+Kernel TLI (Transport Layer Interface).
+
+  * `uts/common/net`
+
+Header files; most are shipped in `/usr/include/net`.
+
+  * `uts/common/netinet`
+
+Header files; most are shipped in `/usr/include/netinet`.
+
+  * `uts/common/nfs`
+
+Network File System headers shipped in `/usr/include/nfs`.
+
+  * `uts/common/os`
+
+Core operating system implementation. This includes such varied aspects as
+privileges, zones, timers, the DDI/DKI interfaces, and high-level locking
+mechanisms.
+
+  * `uts/common/pcmcia`
+
+PCMCIA I/O subsystem and drivers.
+
+  * `uts/common/rpc`
+
+Remote Procedure Call subsystem used by services such as NFS and NIS.
+
+  * `uts/common/rpcsvc`
+
+Generated RPC header files shipped in `/usr/include/rpcsvc`.
+
+  * `uts/common/sys`
+
+Header files shipped in `/usr/include/sys`. These same headers are used to build
+the kernel as well (if the _KERNEL preprocessor symbol is defined).
+
+  * `uts/common/syscall`
+
+System call implementations. Most syscalls are implemented in files matching
+their names. Note that some system calls are implemented in `os/` or other
+subdirectories instead.
+
+  * `uts/common/vm`
+
+Virtual memory subsystem.
+
+  * `uts/common/zmod`
+
+Compression/decompression library.
+
+  * `uts/i86pc`
+
+Architecture-dependent files for x86 machines. The architecture-dependent
+directories (`i86pc`, `sun`, `sun4`, `sun4u`) all have a set of subdirectories
+similar to common/ above.
+
+  * `uts/intel`
+
+ISA-dependent, architecture-independent files for x86 machines. Note that all
+architecture-independent source files are built into objects in this hierarchy.
+
+  * `uts/sfmmu`
+
+Code specific to the SpitFire memory management unit (UltraSPARC).
+
+  * `uts/sparc`
+
+ISA-dependent, architecture-independent files for SPARC machines. Note that all
+architecture-independent source files are built into objects in this hierarchy.
+
+  * `uts/sun`
+
+Sources common to all Sun implementations. Currently this contains a small
+number of device drivers and some headers shipped in `/usr/include/sys`.
+
+  * `uts/sun4`
+
+Sources common to all sun4* machine architectures.
+
+  * `uts/sun4u`
+
+Architecture-dependent sources for the sun4u architecture. Each system
+implementation has a subdirectory here.
+
+### Exception Lists
+
+You may note that we started inside of `usr/src`. There is just one other
+component which is outside of `usr/src`, the directory `exception_lists`. The
+`exception_lists` contain several files that relate to exceptions to the
+standard checks that we make. This covers things like packaging and cstyle.
+Several of these exceptions exist for historical reasons. If you find yourself
+making additions to these files, you should think twice about what you're doing.
+
+## Object File Layouts
+
+There are two basic strategies that can be used in the creation of object files
+and finished binaries (executables and libraries):
+
+(a) place objects in a dedicated directory hierarchy parallel to the sources
+
+(b) place objects in the same directories as the sources they are built from
+
+ON actually uses each of these approaches in different parts of the tree.
+Strategy (a) must be used for all kernel code and many libraries, is preferred
+for new code, and will be described in detail here. There are several legacy
+variations on strategy (a) as well as instances in which strategy (b) is still
+used; the majority of these are in the cmd hierarchy. The entire uts hierarchy
+has been converted to strategy (a) as described below, and you will see this
+same approach used throughout much of the rest of the tree.
+
+### General Strategy for Kernel Objects
+
+First, each platform-independent module has zero or one build directory per
+architecture. An architecture in this case can be a machine (`sun4u`, `i86pc`)
+or a processor architecture (`intel`, `sparc`). The path to this location is
+always `usr/src/uts/<platform>/<module>`. The module name in this case is what's
+found in `/kernel/drv` or a similar location, and in the case of device drivers
+or STREAMS modules should always match the name of the man page describing that
+driver or module.
+
+The only files normally present in this directory for a clean tree are
+makefiles. After a build, these directories contain one or more of `obj32`,
+`obj64`, `debug32`, and `debug64` directories. These directories contain the
+object files and finally linked modules that are later installed into the kernel
+directory and other locations in the prototype.
+
+'Implementation architecture'-independent modules are produced in individual
+directories (one per module) under the 'instruction-set architecture' directory
+(i.e.: `sparc`). Similarly, 'implementation architecture'-dependent modules are
+produced in individual directories under the 'implementation architecture'
+directory (i.e.: `sun4`, `sun4u`, `i86pc`).
+
+Platform-dependent modules (including 'unix') may be built more than once in
+different locations. For example, they'll be built under each of the different
+implementations of a platform. This is more common on sparc than x86.
+
+The sources are not contained in these build directories.
+
+### General Strategy for Command/Library Objects
+
+Most libraries and some commands and daemons are built using makefiles very
+similar to those used to build the kernel. Accordingly, intermediate objects,
+shared objects, libraries, and executables are built by small makefile fragments
+and placed in dedicated ISA-specific subdirectories.
+
+Other commands' build systems place objects in the same directories as the
+sources. See [Component Anatomy, Creation, and
+Modification](./anatomy.htm#commands) for more information on how commands are
+built.
+
+### Exceptions in cmd and lib
+
+Most of the cmd tree is directly based on the original System V Release 4
+source, which uses strategy (b) described above. Since most commands and daemons
+do not need to provide both 32- and 64-bit versions, or do anything special when
+building for different architectures, this strategy is adequate and appropriate
+for most commands and has been applied even to new subdirectories. In situations
+in which architecture-dependent build options are needed or multiple ISA
+versions of a program must be delivered, this strategy is unworkable and the
+more general approach of multiple per-ISA object directories must be used
+instead. This latter approach is similar to the approach used for kernel
+modules.
+
+The lib hierarchy is somewhat simpler; nearly all subdirectories must use
+per-ISA object file locations and makefiles.
+
+A few directories do not appear to follow any rule or pattern, such as
+`cmd/cmd-inet` and `cmd/agents`. These are primarily historical artifacts of
+Sun's internal project organization. 
+
+## Makefile Layout
+
+This discussion is intended to provide a step-by-step explanation of what
+targets exist and how they are built by the makefiles. I ignore the
+platform-specific module architecture because it is unlikely to be of
+significant interest except to hardware support engineers. The three main
+subtrees of interest are the kernel (`uts`), commands and daemons (`cmd`), and
+libraries (`lib`). The next three subsections cover these three subtrees in
+turn. There are also a handful of makefiles which apply to all builds:
+
+  * `usr/src/Makefile`
+
+This is the top-level makefile. It drives builds for various targets in each
+subdirectory. It is aware of the specific targets that need to be built in each
+subdirectory in order to perform a complete build, and itself knows how to
+create a skeleton proto area for later use by `install` and `install_h` targets.
+
+  * `usr/src/Makefile.lint`
+
+All linting from the top level is driven by this makefile. It contains long
+lists of directories known to be lint-clean and contains simple recursive rules
+for rebuilding each subdirectory's lint target.  The actual linting is driven by
+the lower-level makefiles.
+
+  * `usr/src/Makefile.master`
+
+  * `usr/src/Makefile.master.64`
+
+These two makefiles contain generic definitions, such as build and installation
+tools locations, template macros for compilers, linkers, and other tools to be
+used by other makefiles in defining rules, and global definitions such as the
+ISA and machine names that apply to this build. `Makefile.master.64` contains
+definitions specific to 64-bit builds that override the generic definitions.
+
+  * `usr/src/Makefile.msg.targ`
+
+Common targets for building message catalogues are defined here.  Message
+catalogues provide translations of messages for g11n purposes.
+
+  * `usr/src/Makefile.psm`
+
+This makefile defines the installation locations for platform-specific modules.
+These are analogous to the other kernel module install locations `/kernel` and
+`/usr/kernel`.
+
+  * `usr/src/Makefile.psm.targ`
+
+Installation target definitions for platform-specific modules are defined here.
+This instructs the build system how to install files into the directories
+defined by Makefile.psm.
+
+  * `usr/src/Targetdirs`
+
+This is a set of definitions for the owner, group, and permissions of each
+directory that will be created by the installation process. It also contains
+information about special symbolic links to be installed for some 64-bit library
+versions. 
+
+### Kernel Makefile Layout
+
+The driving makefile for any module is located in the leaf directory (build
+directory) where the module and its component objects are built.  After a `make
+clobber` operation, the makefile should be the only file remaining in that
+directory. There are two other types of makefiles in the tree: suffixed and
+non-suffixed. Common definitions and rules needed by all leaf makefiles are
+contained in the suffixed makefiles; these are included by leaf makefiles.
+Non-suffixed makefiles generally invoke multiple lower-level makefiles with the
+same target so that many modules can be built with a single make invocation.
+
+  * `uts/Makefile`
+
+  * `uts/sparc/Makefile`
+
+  * `uts/sun4u/Makefile`
+
+  * `uts/intel/Makefile`
+
+  * `uts/intel/ia32/Makefile`
+
+  * `uts/i86pc/Makefile`
+
+These makefiles generally are cognizant of the components made in subdirectories
+and invoke makefiles in those sub- directories to perform the actual build. Some
+targets (or pseudo-targets) may be directly built at this level (such as the
+cscope databases).
+
+  * `uts/Makefile.uts`
+
+Contains common definitions for all possible architectures.
+
+  * `uts/Makefile.targ`
+
+Contains common targets for all possible architectures.
+
+  * `uts/common/Makefile.files`
+
+  * `uts/sun/Makefile.files`
+
+  * `uts/sparc/Makefile.files`
+
+  * `uts/sun4/Makefile.files`
+
+  * `uts/sun4u/Makefile.files`
+
+  * `uts/intel/Makefile.files`
+
+  * `uts/intel/ia32/Makefile.files`
+
+  * `uts/i86pc/Makefile.files`
+
+These makefiles are divided into two sections. The first section defines the
+object lists which comprise each module. The second section defines the
+appropriate header search paths and other machine-specific global build
+parameters.
+
+  * `uts/common/Makefile.rules`
+
+  * `uts/sun/Makefile.rules`
+
+  * `uts/sparc/Makefile.rules`
+
+  * `uts/sun4/Makefile.rules`
+
+  * `uts/sun4u/Makefile.rules`
+
+  * `uts/intel/Makefile.rules`
+
+  * `uts/intel/ia32/Makefile.rules`
+
+  * `uts/intel/amd64/Makefile.rules`
+
+  * `uts/i86pc/Makefile.rules`
+
+The files provide build rules (targets) which allow make to function in a
+multiple directory environment. Each source tree below the directory containing
+the makefile has a build rule in the file.
+
+  * `uts/sun4/Makefile.sun4`
+
+  *  `uts/sun4u/Makefile.sun4u`
+
+  * `uts/intel/Makefile.intel`
+
+  *`uts/intel/ia32/Makefile.ia32`
+
+  * `uts/i86pc/Makefile.i86pc`
+
+These makefiles contain the definitions specific (defaults) to the obvious
+'implementation architecture'. These rules can be overridden in specific leaf
+node makefiles if necessary.
+
+  * `uts/sun4u/unix/Makefile`
+
+  * `uts/i86pc/unix/Makefile`
+
+Main driving makefile for building unix.
+
+  * `uts/sun4u/MODULE/Makefile` (for MODULE in `cgsix`, `cpu`, `kb`, ...)
+
+Main driving makefile for building MODULE.
+
+  * `uts/sun4u/genunix/Makefile`
+
+  * `uts/i86pc/genunix/Makefile`
+
+Main driving makefile for building genunix. 
+
+Issuing the command `dmake` in the `uts` directory will cause all supported,
+modularized kernels and modules to be built.
+
+Issuing the command `dmake` in a `uts/ARCHITECTURE` directory (i.e.:
+`uts/sparc`) will cause all supported, "implementation architecture"-independent
+modules for `ARCHITECTURE` to be built.
+
+Issuing the command `dmake` in a `uts/MACHINE` directory (i.e.: `uts/sun4u`)
+will cause that kernel and all supported, "implementation architecture"-
+dependent modules for MACHINE to be built.
+
+The makefiles are verbosely commented. It is desired that they should stay this
+way.
+
+### Command Makefile Layout
+
+Most command and daemon subdirectories follow one of two general layout rules,
+depending on where object files will be located (see [Parts of a
+Command](./anatomy.html#parts-of-a-command-directory)). For ISA-dependent
+programs, the layout is similar to that used by the kernel. Programs which do
+not need ISA-dependent build behavior use a simplified makefile layout. In the
+description here, we use the example of a generic command called `foocmd` whose
+sources are located in `usr/src/cmd/foocmd`. The makefiles relevant to building
+`foocmd` are:
+
+  * `usr/src/cmd/Makefile`
+
+Top-level driving makefile for all commands/daemons. This is a simple recursive
+makefile which is aware of which subdirectories should be built and will cause
+the given target to be rebuilt in each of them.
+
+  * `usr/src/cmd/Makefile.cmd`
+
+This makefile defines the installation directories and rules for installing
+executables into them.
+
+  * `usr/src/cmd/Makefile.cmd.64`
+
+Additional definitions specific to 64-bit builds are provided here.
+
+  * `usr/src/cmd/Makefile.cmd.bsm`
+
+This specialty makefile is used only by `auditstat` and `dminfo`. It provides some
+generic boilerplate rules.
+
+  * `usr/src/cmd/Makefile.targ`
+
+Basic target definitions for clobber, lint, and installation.
+
+  * `usr/src/cmd/foocmd/Makefile`
+
+Driving makefile for foocmd. Normally defines `PROG` but otherwise contains only
+boilerplate definitions and targets. This is almost always copied from another
+similar makefile. If foocmd does not require ISA-dependent build behavior, rules
+will normally be specified directly, including those for the install target. If
+foocmd does require ISA-dependent build behavior, this makefile will instead
+define SUBDIRS to include the ISA-specific versions that must be built, and
+define targets recursively. This will usually leave the install target
+definition for each ISA makefile and cause a link to `$(ISAEXEC)` to be created.
+See section [Handling Multiple
+Architectures](./anatomy.html#handling-multiple-architectures) for more
+information on platform dependencies and `$(ISAEXEC)`.
+
+  * `usr/src/cmd/foocmd/Makefile.com`
+
+Defines `PROG`, `OBJS`, `SRCS`, and includes `Makefile.cmd`. May also contain
+additional flags for compilation or linking. This makefile normally defines
+targets for `all`, `$(PROG)`, `clean`, and `lint`; this portion is usually
+generic and would be copied from another similar makefile.
+
+  * `usr/src/cmd/foocmd/*/Makefile`
+
+ISA-specific makefiles, which may define additional ISA-specific flags or
+targets, and will generally include its own install target to install the
+ISA-specific program(s) it builds. 
+
+### Library Makefile Layout
+
+Most library subdirectories follow the same general layout, which is similar to
+the command layout. Unlike commands, most libraries are built for both 32- and
+64-bit architecture variants, so ISA-specific directories will almost always be
+present. Therefore, the overall build structure for each library is similar to
+that of the kernel. We'll give an overview of the general makefiles for
+libraries as well as briefly explain the makefiles for a specific library. Later
+on in [Component Anatomy, Creation, and Modification](./anatomy.htm#libraries)
+we'll go into more detail and show examples of building your own library and
+other components involved.
+
+  * `lib/Makefile.lib`
+
+This contains the bulk of the macros for building shared objects.
+
+  * `lib/Makefile.lib.64`
+
+This contains macros for building 64-bit objects, and should be included in
+Makefiles for 64-bit native ISAs.
+
+  * `lib/Makefile.rootfs`
+
+This contains macro overrides for libraries that install into `/lib` (rather than
+`/usr/lib`).
+
+  * `lib/Makefile.targ`
+
+This contains rules for building shared objects. 
+
+  * `lib/<library>/Makefile`
+
+This is the library's top-level Makefile. It should contain rules for building
+any ISA-independent targets, such as installing header files and building
+message catalogs, but should defer all other targets to ISA-specific Makefiles.
+
+  * `lib/<library>/Makefile.com`
+
+This is the library's common Makefile. It should contain rules and macros which
+are common to all ISAs. This Makefile should never be built explicitly, but
+instead should be included (using the make include mechanism) by all of your
+ISA-specific Makefiles.
+
+  * `lib/<library>/<isa>/Makefile`
+
+These are the library's ISA-specific Makefiles, one per ISA (usually `sparc` and
+`i386`, and sometimes `sparcv9` and `amd64`). These Makefiles should include your
+common Makefile and then provide any needed ISA-specific rules and definitions,
+perhaps overriding those provided in your common Makefile.
+
+## Conclusion
+
+We've done a basic tour of what source code is located where inside of the gate
+as well as covered how we deal with object files. We've introduced our Makefile
+system and covered the basic layout for these components. In the next section
+we'll go through and detail all of the components of commands, libraries, and
+kernel modules, as well as go through examples of adding new ones.

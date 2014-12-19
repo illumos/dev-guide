@@ -1,0 +1,1142 @@
+# Don't panic! -- Debugging
+
+## Introduction
+
+During both development and use, we encounter bugs. Rather than pretend that
+these things do not exist, illumos takes a different approach and has a long
+history of tooling around tools to help you track down and fix these bugs. This
+section will start off by briefly introducing various tools and will then go
+into detail about how to use these tools to solve different classes of problems.
+
+## Tools
+
+illumos has a broad set of tools that are designed to help both with in-situ and
+post-mortem debugging of both user applications and the kernel. Each tool has
+its own place and usefulness.
+
+### ptools
+
+The first set of tools worth talking about are what we call the `ptools` which
+are documented in `proc(1)`. These tools use `libproc` and the `/proc` file
+system (`proc(4)`) to gather information about them.  Several of these commands
+like `pflags`, `pstop`, and `pstack` can operate on a single thread instead of
+or in addition to the rest of the process. These tools can also be used to
+report information from user land process core dumps as well. This allows you to
+get a good starting point about what might have happened without having to fire
+up a debugger.
+
+We'll start off by listing the various ptools and then show basic examples of
+their usage:
+
+  * pgrep - Search for processes
+
+  * pkill - Send processes signals
+
+  * pflags - This prints flag information about a given thread. This includes
+  any pending signals, whether it is being traced or held via a `pstop`, and
+  whether it is a 32-bit or 64-bit application.
+
+  * pcred - Prints credentials of the process, including effective and real user
+  and group ids.
+
+  * pldd - Prints open dynamic libraries and files opened via `dlopen(3C)`.
+
+  * psig - Prints signal handlers and signal dispositions (eg. ignore).
+
+  * pstack - Print stack traces for a process and its threads.
+
+  * pfiles - Prints out all the open files for a process. It also attempts to
+  resolve open files to file names on disk and resolve the remote and local
+  endpoints of sockets, pipes, and doors.
+
+  * pwdx - Prints the current working directory for a process.
+
+  * pstop - Causes the process and its threads to stop executing.
+
+  * prun - Resumes a stopped process and its threads.
+
+  * pwait - Waits for listed processes to terminate.
+
+  * ptime - Prints out the current time and microstates elapsed for a process or
+  runs a process collecting timing information.
+
+#### Examples of ptools
+
+One of the most common tools used is `pgrep`. It searchs for processes based on
+name. The three options that are most commonly used with it are `-x` for an
+exact match of the process name, `-o` for the oldest process which matches that
+name and `-n` for the newest process that matches that name. Here are some examples:
+
+```
+$ pgrep sh
+24388
+68672
+78935
+24957
+68544
+24761
+22363
+68540
+68541
+22347
+22348
+$ pgrep -x bash
+68672
+68544
+22363
+$ pgrep -o sh
+78935
+$ pgrep -n sh
+22363
+```
+
+While `pgrep` is useful on its own, it often gets invoked as part of a shell
+pipeline and used with the other ptools like `pstack`, `pfiles`, or `pstop`. In
+terms of the other most frequently used ptools for debugging you have `pstack`
+and `pfiles`. Both of these work on running processes and core files, though
+`pfiles` has less information available to it from a core file. Let's look at
+some examples of pfiles:
+
+```
+$ pfiles $$
+68544:  -bash
+  Current rlimit: 65536 file descriptors
+   0: S_IFCHR mode:0620 dev:533,1 ino:4243104526 uid:1002 gid:7 rdev:6,25
+      O_RDWR|O_NOCTTY|O_LARGEFILE
+      /dev/pts/25
+      offset:113761
+   1: S_IFCHR mode:0620 dev:533,1 ino:4243104526 uid:1002 gid:7 rdev:6,25
+      O_RDWR|O_NOCTTY|O_LARGEFILE
+      /dev/pts/25
+      offset:113761
+   2: S_IFCHR mode:0620 dev:533,1 ino:4243104526 uid:1002 gid:7 rdev:6,25
+      O_RDWR|O_NOCTTY|O_LARGEFILE
+      /dev/pts/25
+      offset:113761
+   3: S_IFDOOR mode:0444 dev:542,0 ino:413 uid:0 gid:0 rdev:541,0
+      O_RDONLY|O_LARGEFILE FD_CLOEXEC  door to nscd[92307]
+      /var/run/name_service_door
+ 255: S_IFCHR mode:0620 dev:533,1 ino:4243104526 uid:1002 gid:7 rdev:6,25
+      O_RDWR|O_NOCTTY|O_LARGEFILE FD_CLOEXEC
+      /dev/pts/25
+      offset:113761
+# pfiles $(pgrep -ox nginx)
+21289:  /opt/local/sbin/nginx -c /opt/local/etc/nginx/nginx.conf
+  Current rlimit: 65536 file descriptors
+   0: S_IFCHR mode:0666 dev:535,2 ino:1797736558 uid:0 gid:3 rdev:38,2
+      O_RDWR|O_LARGEFILE
+      /zones/855ac4dc-346f-4b68-8dc0-ccaace3dec6d/root/dev/null
+      offset:0
+   1: S_IFCHR mode:0666 dev:535,2 ino:1797736558 uid:0 gid:3 rdev:38,2
+      O_RDWR|O_LARGEFILE
+      /zones/855ac4dc-346f-4b68-8dc0-ccaace3dec6d/root/dev/null
+      offset:0
+   2: S_IFREG mode:0644 dev:90,65571 ino:20830 uid:0 gid:0 size:6993
+      O_WRONLY|O_APPEND|O_CREAT|O_LARGEFILE
+      /zones/855ac4dc-346f-4b68-8dc0-ccaace3dec6d/root/var/log/nginx/error.log
+      offset:0
+   4: S_IFREG mode:0644 dev:90,65571 ino:20836 uid:0 gid:0 size:22706
+      O_WRONLY|O_APPEND|O_CREAT|O_LARGEFILE FD_CLOEXEC
+      /zones/855ac4dc-346f-4b68-8dc0-ccaace3dec6d/root/var/log/nginx/access.log
+      offset:0
+   5: S_IFDOOR mode:0444 dev:544,0 ino:179 uid:0 gid:0 rdev:543,0
+      O_RDONLY|O_LARGEFILE FD_CLOEXEC  door to nscd[17229]
+      /zones/855ac4dc-346f-4b68-8dc0-ccaace3dec6d/root/var/run/name_service_door
+   6: S_IFREG mode:0644 dev:90,65571 ino:20830 uid:0 gid:0 size:6993
+      O_WRONLY|O_APPEND|O_CREAT|O_LARGEFILE FD_CLOEXEC
+      /zones/855ac4dc-346f-4b68-8dc0-ccaace3dec6d/root/var/log/nginx/error.log
+      offset:0
+   7: S_IFSOCK mode:0666 dev:542,0 ino:1964 uid:0 gid:0 rdev:0,0
+      O_RDWR|O_NDELAY
+        SOCK_STREAM
+        SO_REUSEADDR,SO_SNDBUF(49152),SO_RCVBUF(128000)
+        sockname: AF_INET 0.0.0.0  port: 80
+   8: S_IFSOCK mode:0666 dev:542,0 ino:33378 uid:0 gid:0 rdev:0,0
+      O_RDWR|O_NDELAY FD_CLOEXEC
+        SOCK_STREAM
+        SO_SNDBUF(16384),SO_RCVBUF(5120)
+        sockname: AF_UNIX 
+        peer: nginx[21289] zone: 855ac4dc-346f-4b68-8dc0-ccaace3dec6d[1]
+   9: S_IFSOCK mode:0666 dev:542,0 ino:44397 uid:0 gid:0 rdev:0,0
+      O_RDWR|O_NDELAY|0x1000 FD_CLOEXEC
+        SOCK_STREAM
+        SO_SNDBUF(16384),SO_RCVBUF(5120)
+        sockname: AF_UNIX 
+        peer: nginx[21289] zone: 855ac4dc-346f-4b68-8dc0-ccaace3dec6d[1]
+$ pfexec gcore $(pgrep startd)
+gcore: core.5251 dumped
+$ pfiles core.5251
+core 'core.5251' of 5251:       /lib/svc/bin/svc.startd
+   0: S_IFCHR mode:0666 dev:533,1 ino:2827494442 uid:0 gid:3 rdev:38,2
+      O_RDONLY|O_LARGEFILE
+      /dev/null
+      offset:0
+   1: S_IFCHR mode:0620 dev:533,1 ino:2826942025 uid:0 gid:7 rdev:92,1
+      O_RDWR|O_CREAT|O_LARGEFILE
+      /dev/zconsole
+      offset:0
+   2: S_IFCHR mode:0620 dev:533,1 ino:2826942025 uid:0 gid:7 rdev:92,1
+      O_RDWR|O_CREAT|O_LARGEFILE
+      /dev/zconsole
+      offset:0
+   3: S_IFPORT mode:0000 dev:543,0 uid:0 gid:0 size:0
+   4: S_IFDOOR mode:0444 dev:542,0 ino:413 uid:0 gid:0 rdev:541,0
+      O_RDONLY|O_LARGEFILE FD_CLOEXEC
+      /var/run/name_service_door
+   5: S_IFREG mode:0444 dev:535,4 ino:65538 uid:0 gid:0 rdev:0,0
+      O_RDONLY|O_LARGEFILE
+      /system/contract/process/pbundle
+   6: S_IFREG mode:0444 dev:534,2 ino:28745 uid:0 gid:0 rdev:0,0
+      O_RDONLY
+      /proc/23198/psinfo
+      offset:336
+   7: S_IFDOOR mode:0777 dev:541,0 ino:0 uid:0 gid:0 rdev:541,0
+      O_RDWR FD_CLOEXEC
+   8: S_IFDOOR mode:0777 dev:541,0 ino:0 uid:0 gid:0 rdev:541,0
+      O_RDWR FD_CLOEXEC
+   9: S_IFDOOR mode:0777 dev:541,0 ino:0 uid:0 gid:0 rdev:541,0
+      O_RDWR FD_CLOEXEC
+  10: S_IFDOOR mode:0777 dev:541,0 ino:0 uid:0 gid:0 rdev:541,0
+      O_RDWR FD_CLOEXEC
+  11: S_IFCHR mode:0000 dev:533,1 ino:35425 uid:0 gid:0 rdev:37,4539
+      O_WRONLY FD_CLOEXEC
+      /dev/conslog
+      offset:0
+  14: S_IFCHR mode:0000 dev:533,1 ino:55008 uid:0 gid:0 rdev:60,125
+      O_RDWR FD_CLOEXEC
+      /dev/sysevent
+      offset:0
+  19: S_IFREG mode:0644 dev:90,65610 ino:12417 uid:0 gid:0 size:3133
+      O_RDWR|O_APPEND|O_CREAT|O_LARGEFILE FD_CLOEXEC
+      /var/svc/log/svc.startd.log
+      offset:3133
+  24: S_IFREG mode:0444 dev:534,2 ino:39113 uid:0 gid:0 rdev:0,0
+      O_RDONLY
+      /proc/23383/psinfo
+      offset:336
+  34: S_IFCHR mode:0000 dev:533,1 ino:31283 uid:0 gid:0 rdev:60,59
+      O_RDWR FD_CLOEXEC
+      /dev/sysevent
+      offset:0
+  36: S_IFREG mode:0444 dev:535,4 ino:65538 uid:0 gid:0 rdev:0,0
+      O_RDONLY|O_LARGEFILE
+      /system/contract/process/pbundle
+  56: S_IFCHR mode:0000 dev:533,1 ino:31289 uid:0 gid:0 rdev:60,60
+      O_RDWR FD_CLOEXEC
+      /dev/sysevent
+      offset:0
+  58: S_IFDOOR mode:0777 dev:541,0 ino:0 uid:0 gid:0 rdev:541,0
+      O_RDWR FD_CLOEXEC
+  69: S_IFDOOR mode:0777 dev:541,0 ino:0 uid:0 gid:0 rdev:541,0
+      O_RDWR FD_CLOEXEC
+```
+
+You'll note that we don't have information about the various doors. The same
+would be true for file descriptors which used to belong to pipes, fifos, and
+sockets. For a live process `libproc` queries the kernel on behalf of the
+process to get that information. For a core dump, it instead looks at various
+information that is left behind in a special ELF 'notes' section which will
+briefly discuss more on later.
+
+Let's take a look now at `pstack`. As long as sufficient information for
+debugging is present in a binary, `pstack` can tell you what's going on.
+`pstack` doesn't rely on DWARF, it simply needs to have access to the symbol
+table and a frame pointer. If it's software in illumos, you can rest assured
+that it comes this way by default.
+
+```
+$ pstack $(pgrep vmadmd)
+24849:  /usr/node/bin/node --abort_on_uncaught_exception /usr/vm/sbin/vmadmd
+-----------------  lwp# 1 / thread# 1  --------------------
+ fe918637 portfs   (6, 3, 8737b48, 40, 1, 8047cc4)
+ 08249cc6 port_poll (8610d60, 0, 40140000, 869a144, 865d008, 869a12c) + 7e
+ 08243171 uv__run  (8610b00, 86acc88, 8047da8, 86accb8) + 81
+ 082433ad uv_run   (8610b00, 3, 8047e08, 86acca8, fe90d104, 8047e08) + 15
+ 08206604 _ZN4node5StartEiPPc (3, 8047e08, 8047e48, 8047dcc) + 174
+ 0821593f main     (81ff5d4, feffb0a4, 8047dfc, 819cd73, 3, 8047e08) + 1b
+ 0819cd73 _start   (3, 8047eb8, 8047ecb, 8047ee9, 0, 8047efd) + 83
+-----------------  lwp# 2 / thread# 2  --------------------
+ fe914939 lwp_park (0, 0, 0)
+ fe9065a0 sema_wait (8672e4c, fe77ef5f, 100, 1, 8672e4c, 8673f10) + 64
+ fe8f96ad sem_wait (8672e4c, 8673f30, fe77ef58, 8673f01) + 35
+ 08439a7a _ZN2v88internal16SolarisSemaphore4WaitEv (8672e48, fe77ef5f, 0, dbba0, 8673f10, 8673f01) + 16
+ 083a9941 _ZN2v88internal15RuntimeProfiler27WaitForSomeIsolateToEnterJSEv (8673f30, 0, fe77efa8, 81fc199) + 49
+ 081fc1dd _ZN2v88internal12SignalSender3RunEv (8673f10, 3, fe6702a0, 8439944) + 59
+ 0843994f _ZN2v88internalL11ThreadEntryEPv (8673f10, 0, 0, 0) + 1b
+ fe91474d _thrp_setup (fe670240) + 88
+ fe9148e0 _lwp_start (fe670240, 0, 0, 0, 0, 0)
+-----------------  lwp# 3 / thread# 3  --------------------
+ fe914939 lwp_park (0, 0, 0)
+ fe90dc98 cond_wait_queue (8610fb0, 8610f98, 0, fe90c3bb, 8610f8c, 0) + 6a
+ fe90e310 __cond_wait (8610fb0, 8610f98, fe919925, fe989000, fe989000, 866a730) + 8f
+ fe90e364 cond_wait (8610fb0, 8610f98, 1, 8671320, 8610f80, 8671320) + 2e
+ fe90e3ad pthread_cond_wait (8610fb0, 8610f98, dd, 82445d2) + 24
+ 082442d0 etp_proc (866a730, 0, 0, 0) + c4
+ fe91474d _thrp_setup (fe670a40) + 88
+ fe9148e0 _lwp_start (fe670a40, 0, 0, 0, 0, 0)
+-----------------  lwp# 4 / thread# 4  --------------------
+ fe914939 lwp_park (0, 0, 0)
+ fe90dc98 cond_wait_queue (8610fb0, 8610f98, 0, fe90c3bb, 8610f8c, 0) + 6a
+ fe90e310 __cond_wait (8610fb0, 8610f98, fe919925, fe989000, fe989000, 866a6a0) + 8f
+ fe90e364 cond_wait (8610fb0, 8610f98, 1, 86712b0, 8610f80, 86712b0) + 2e
+ fe90e3ad pthread_cond_wait (8610fb0, 8610f98, 10a, 82445d2) + 24
+ 082442d0 etp_proc (866a6a0, 0, 0, 0) + c4
+ fe91474d _thrp_setup (fe671240) + 88
+ fe9148e0 _lwp_start (fe671240, 0, 0, 0, 0, 0)
+-----------------  lwp# 5 / thread# 5  --------------------
+ fe914939 lwp_park (0, 0, 0)
+ fe90dc98 cond_wait_queue (8610fb0, 8610f98, 0, fe90c3bb, 8610f8c, 0) + 6a
+ fe90e310 __cond_wait (8610fb0, 8610f98, fe919925, fe989000, fe989000, 866a4f0) + 8f
+ fe90e364 cond_wait (8610fb0, 8610f98, 1, 86712b0, 8610f80, 86712b0) + 2e
+ fe90e3ad pthread_cond_wait (8610fb0, 8610f98, b3, 82445d2) + 24
+ 082442d0 etp_proc (866a4f0, 0, 0, 0) + c4
+ fe91474d _thrp_setup (fe671a40) + 88
+ fe9148e0 _lwp_start (fe671a40, 0, 0, 0, 0, 0)
+$ pstack core.83049 
+core 'core.83049' of 83049:     /bin/bash -c (cd openssl-1.0.1d-64strap; \     env - PATH=/home/rm/src
+ fee95f95 waitid   (7, 0, 80473e0, 3)
+ fee383b0 waitpid  (ffffffff, 80474bc, 0, 0, 2, 80474b0) + 75
+ 08090cfd waitchld (1446a, 1, 0, 8, 3, 804750c) + 7d
+ 08091e01 wait_for (1446a, 0, 242, 8081a0a) + 1ed
+ 08081e30 execute_command_internal (8125308, 0, ffffffff, ffffffff, 8125328, 8125308) + 470
+ 080bbca1 parse_and_execute (8125008, 80f3b42, 4, 8047889) + 1ad
+ 0806f34d run_one_command (8047801, 3, 3, 0, fefa0500, fefa0500) + 8d
+ 0807035d main     (80ee7ca, feffb0a4, 80476e0, 806e8e3, 3, 80476ec) + ab5
+ 0806e8e3 _start   (3, 80477f4, 80477fe, 8047801, 0, 8047889) + 83
+```
+
+Often times, looking at the output of a pstack shows you useful information
+without needing a debugger. For example, you can usually spot where a program
+dumped core or if you see several threads blocked in calls to
+`pthread_mutex_lock()` you might suspect that a deadlock has occurred.
+
+### truss
+
+`truss(1)` is a tool used to trace system calls and signals. Often it is used to
+get a basic sense of what a simple command is doing and what system calls to the
+kernel are failing. Another use of truss is to watch everything that is passed
+to exec. Here are two different examples that show the two different use cases:
+
+```
+$ truss echo 'Hello'
+execve("/usr/bin/echo", 0x08047CC4, 0x08047CD0)  argc = 2
+sysinfo(SI_MACHINE, "i86pc", 257)               = 6
+mmap(0x00000000, 32, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANON, -1, 0) = 0xFEFB0000
+mmap(0x00000000, 4096, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANON, -1, 0) = 0xFEFA0000
+mmap(0x00000000, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0) = 0xFEF90000
+mmap(0x00000000, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0) = 0xFEF80000
+memcntl(0xFEFB6000, 47988, MC_ADVISE, MADV_WILLNEED, 0, 0) = 0
+memcntl(0x08050000, 3104, MC_ADVISE, MADV_WILLNEED, 0, 0) = 0
+resolvepath("/usr/lib/ld.so.1", "/lib/ld.so.1", 1023) = 12
+resolvepath("/usr/bin/echo", "/usr/bin/echo", 1023) = 13
+sysconfig(_CONFIG_PAGESIZE)                     = 4096
+stat64("/usr/bin/echo", 0x08047958)             = 0
+open("/var/ld/ld.config", O_RDONLY)             = 3
+fstat64(3, 0x080474D8)                          = 0
+mmap(0x00000000, 140, PROT_READ, MAP_SHARED, 3, 0) = 0xFEF70000
+close(3)                                        = 0
+stat64("/lib/libc.so.1", 0x08047178)            = 0
+resolvepath("/lib/libc.so.1", "/lib/libc.so.1", 1023) = 14
+open("/lib/libc.so.1", O_RDONLY)                = 3
+mmapobj(3, MMOBJ_INTERPRET, 0xFEFA0A60, 0x080471E4, 0x00000000) = 0
+close(3)                                        = 0
+memcntl(0xFEE20000, 244948, MC_ADVISE, MADV_WILLNEED, 0, 0) = 0
+mmap(0x00000000, 4096, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANON, -1, 0) = 0xFEE10000
+mmap(0x00010000, 24576, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANON|MAP_ALIGN, -1, 0) = 0xFEE00000
+getcontext(0x08047798)
+getrlimit(RLIMIT_STACK, 0x08047790)             = 0
+getpid()                                        = 36039 [36036]
+lwp_private(0, 1, 0xFEE02A40)                   = 0x000001C3
+setustack(0xFEE02AA0)
+sysi86(SI86FPSTART, 0xFEF6DF8C, 0x0000133F, 0x00001F80) = 0x00000001
+sysconfig(_CONFIG_PAGESIZE)                     = 4096
+open("/usr/lib/locale//en_US.UTF-8/LC_CTYPE/LCL_DATA", O_RDONLY) = 3
+fstat(3, 0x08047658)                            = 0
+brk(0x08062850)                                 = 0
+brk(0x0806A850)                                 = 0
+llseek(3, 0, SEEK_CUR)                          = 0
+llseek(3, 0, SEEK_SET)                          = 0
+fstat64(3, 0x080474E0)                          = 0
+brk(0x0806A850)                                 = 0
+brk(0x0806C850)                                 = 0
+fstat64(3, 0x080473E0)                          = 0
+ioctl(3, TCGETA, 0x0804749E)                    Err#25 ENOTTY
+read(3, " R u n e M a g 1 U T F -".., 4096)     = 4096
+read(3, "01E0\0\0 S01\0\0 S01\0\0".., 4096)     = 4096
+read(3, "C704\0\0C704\0\001E0\0\0".., 4096)     = 4096
+read(3, " r1E\0\001E0\0\0 s1E\0\0".., 4096)     = 4096
+read(3, "01E0\0\0 _A7\0\0 _A7\0\0".., 4096)     = 4096
+read(3, " "05\0\0 "05\0\0 #05\0\0".., 4096)     = 4096
+read(3, "BD01\0\0BC01\0\0BF01\0\0".., 4096)     = 4096
+read(3, "\b1F\0\0101F\0\0151F\0\0".., 4096)     = 1516
+brk(0x0806C850)                                 = 0
+brk(0x08074850)                                 = 0
+llseek(3, 0, SEEK_CUR)                          = 30188
+close(3)                                        = 0
+open("/usr/lib/locale//en_US.UTF-8/LC_NUMERIC/LCL_DATA", O_RDONLY) = 3
+fstat(3, 0x080476B8)                            = 0
+read(3, " .\n ,\n 3\n", 6)                      = 6
+close(3)                                        = 0
+open("/usr/lib/locale//en_US.UTF-8/LC_TIME/LCL_DATA", O_RDONLY) = 3
+fstat(3, 0x080476C8)                            = 0
+read(3, " J a n\n F e b\n M a r\n".., 308)      = 308
+close(3)                                        = 0
+open("/usr/lib/locale//en_US.UTF-8/LC_COLLATE/LCL_DATA", O_RDONLY) = 3
+fstat(3, 0x080476F8)                            = 0
+mmap(0x00000000, 75408, PROT_READ, MAP_PRIVATE, 3, 0) = 0xFEDEC000
+close(3)                                        = 0
+open("/usr/lib/locale//en_US.UTF-8/LC_MONETARY/LCL_DATA", O_RDONLY) = 3
+fstat(3, 0x080476B8)                            = 0
+read(3, " U S D  \n $\n .\n ,\n 3".., 44)       = 44
+close(3)                                        = 0
+open("/usr/lib/locale//en_US.UTF-8/LC_MESSAGES/LCL_DATA", O_RDONLY) = 3
+fstat(3, 0x080476C8)                            = 0
+read(3, " ^ ( ( [ y Y ] ( [ e E ]".., 45)       = 45
+close(3)                                        = 0
+ioctl(1, TCGETA, 0x08047A3E)                    = 0
+fstat64(1, 0x08047980)                          = 0
+Hello
+write(1, " H e l l o\n", 6)                     = 6
+_exit(0)
+$ truss -t exec -a -f gcc tmp.c -lsocket
+74040:  execve("/usr/bin/bash", 0x08047C98, 0x08047CAC)  argc = 4
+74040:   argv: /usr/bin/bash /opt/local/bin/gcc tmp.c -lsocket
+74046:  execve("/usr/xpg4/bin/id", 0x081252E8, 0x08123C08)  argc = 2
+74046:   argv: /usr/xpg4/bin/id -un
+74055:  execve("/usr/bin/cat", 0x081264A8, 0x08123C08)  argc = 4
+74055:   argv: cat /home/rm/.pkg_alternatives//opt/local/bin/gcc
+74055:    /opt/local/etc/pkg_alternatives/opt/local/bin/gcc
+74055:    /opt/local/libdata/pkg_alternatives/opt/local/bin/gcc
+74059:  execve("/usr/bin/grep", 0x08125068, 0x08123C08)  argc = 3
+74059:   argv: grep -v ^#
+74063:  execve("/usr/bin/sed", 0x08126388, 0x08123C08)  argc = 3
+74063:   argv: sed -e s# #__dE/lImIt/Er__#g
+74073:  execve("/usr/bin/sed", 0x08123E28, 0x08123C08)  argc = 3
+74073:   argv: sed -e s#__dE/lImIt/Er__# #g
+74040:  execve("/opt/local/gcc47/bin/gcc", 0x08123908, 0x08126008)  argc = 3
+74040:   argv: /opt/local/gcc47/bin/gcc tmp.c -lsocket
+74079:  execve("/opt/local/gcc47/libexec/gcc/i386-sun-solaris2.11/4.7.2/cc1", 0x080E14D8, 0x080E9314)  argc = 12
+74079:   argv:
+74079:    /opt/local/gcc47/libexec/gcc/i386-sun-solaris2.11/4.7.2/cc1
+74079:    -quiet tmp.c -quiet -dumpbase tmp.c -mtune=generic
+74079:    -march=pentium4 -auxbase tmp -o /var/tmp//ccTyaWjK.s
+74040:      Received signal #18, SIGCLD, in waitid() [default]
+74040:        siginfo: SIGCLD CLD_EXITED pid=74079 status=0x0000
+74103:  execve("/opt/local/bin/gas", 0x080E14D8, 0x080E9314)  argc = 7
+74103:   argv: /opt/local/bin/gas -Qy -s --32 -o /var/tmp//ccUyaWjK.o
+74103:    /var/tmp//ccTyaWjK.s
+74040:      Received signal #18, SIGCLD, in waitid() [default]
+74040:        siginfo: SIGCLD CLD_EXITED pid=74103 status=0x0000
+74110:  execve("/opt/local/gcc47/libexec/gcc/i386-sun-solaris2.11/4.7.2/collect2", 0x080EC468, 0x080E930C)  argc = 24
+74110:   argv:
+74110:    /opt/local/gcc47/libexec/gcc/i386-sun-solaris2.11/4.7.2/collect2
+74110:    -R/opt/local/lib -Y
+74110:    P,/usr/ccs/lib:/lib:/usr/lib:/opt/local/lib -Qy
+74110:    /usr/lib/crt1.o /usr/lib/crti.o /usr/lib/values-Xa.o
+74110:    /opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2/crtbegin.o
+74110:    -L/opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2
+74110:    -L/opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2/../../..
+74110:    -R /opt/local/gcc47/runtime/lib/. -R /opt/local/gcc47/lib/.
+74110:    /var/tmp//ccUyaWjK.o -lsocket -lgcc -lgcc_eh -lc -lgcc
+74110:    -lgcc_eh
+74110:    /opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2/crtend.o
+74110:    /usr/lib/crtn.o
+74113:  execve("/usr/bin/ld", 0x080AC2B8, 0x080A9D30)  argc = 24
+74113:   argv: /usr/bin/ld -R/opt/local/lib -Y
+74113:    P,/usr/ccs/lib:/lib:/usr/lib:/opt/local/lib -Qy
+74113:    /usr/lib/crt1.o /usr/lib/crti.o /usr/lib/values-Xa.o
+74113:    /opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2/crtbegin.o
+74113:    -L/opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2
+74113:    -L/opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2/../../..
+74113:    -R /opt/local/gcc47/runtime/lib/. -R /opt/local/gcc47/lib/.
+74113:    /var/tmp//ccUyaWjK.o -lsocket -lgcc -lgcc_eh -lc -lgcc
+74113:    -lgcc_eh
+74113:    /opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2/crtend.o
+74113:    /usr/lib/crtn.o
+74113:  execve("/usr/bin/amd64/ld", 0x080477F4, 0x08047858)  argc = 24
+74113:   argv: /usr/bin/ld -R/opt/local/lib -Y
+74113:    P,/usr/ccs/lib:/lib:/usr/lib:/opt/local/lib -Qy
+74113:    /usr/lib/crt1.o /usr/lib/crti.o /usr/lib/values-Xa.o
+74113:    /opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2/crtbegin.o
+74113:    -L/opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2
+74113:    -L/opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2/../../..
+74113:    -R /opt/local/gcc47/runtime/lib/. -R /opt/local/gcc47/lib/.
+74113:    /var/tmp//ccUyaWjK.o -lsocket -lgcc -lgcc_eh -lc -lgcc
+74113:    -lgcc_eh
+74113:    /opt/local/gcc47/lib/gcc/i386-sun-solaris2.11/4.7.2/crtend.o
+74113:    /usr/lib/crtn.o
+74110:      Received signal #18, SIGCLD, in waitid() [default]
+74110:        siginfo: SIGCLD CLD_EXITED pid=74113 status=0x0000
+74040:      Received signal #18, SIGCLD, in waitid() [default]
+74040:        siginfo: SIGCLD CLD_EXITED pid=74110 status=0x0000
+```
+
+Another way that you can use truss is to attach it to a running process via the
+`-p` flag. Here's one last example of using truss:
+
+```
+# truss -p $(pgrep startd)
+/228:   door_return(0xFB01ECC8, 4, 0x00000000, 0xFB01EE00, 1007360)
+(sleeping...)
+/8:     door_call(9, 0xFE4C3C28)        (sleeping...)
+/7:     lwp_park(0x00000000, 0)         (sleeping...)
+/4:     lwp_park(0x00000000, 0)         (sleeping...)
+/1:     sigsuspend(0x08047E40)          (sleeping...)
+/2:     ioctl(5, (('c'<<24)|('t'<<16)|('e'<<8)|2), 0x080F3FA8) (sleeping...)
+/5:     ioctl(36, (('c'<<24)|('t'<<16)|('e'<<8)|2), 0x080F3560) (sleeping...)
+/6:     port_get(3, 0xFE6C1FA0, 0x00000000) (sleeping...)
+/10:    lwp_park(0xFE2C5F18, 0)         (sleeping...)
+/9:     lwp_park(0x00000000, 0)         (sleeping...)
+/3:     lwp_park(0x00000000, 0)         (sleeping...)
+/62:    door_return(0xFB21CCC8, 4, 0x00000000, 0xFB21CE00, 1007360)
+(sleeping...)
+```
+
+### The Modular Debugger - mdb
+
+`mdb(1)` is the illumos debugger. `mdb` is an machine level debugger. A full
+guide on the use of `mdb` is available [here](http://illumos.org/books). To help
+get going with `mdb` we'll describe a few helpful things to run.
+
+Commands in `mdb` are called `dcmds`. All commands start with a `::`. In addition to
+commands, `mdb` also has the notion of `walkers`. `walkers` allow iteration over
+various data structures and collections. For example there is a walker for
+iterating over all the threads, `::walk thread`. You can list all the dcmds and
+walkers with the commands `::dcmds` and `::walkers` respectively. `mdb` also
+supports tab completion. You could tab complete the list of dcmds by typing
+`::<tab>` and the set of walkers by `::walk <tab>`. Every command also has built
+in help, so you can run `::help <dcmd>` to get more information about that.
+
+Here are a few useful dcmds:
+
+  * `::help` - Describes the basics of using mdb
+
+  * `::help <dcmd>` - Display the help for that dcmd
+
+  * `::quit` - Quit the debugger. You can also quit via CTRL+d.
+
+  * `::status` - Dispaly basic state information
+
+  * `::stack` - Display the stack
+
+  * `::walk thread` - Walk over every thread
+
+  * `::walk thread | ::findstack` - Walk every thread and print its stack
+
+  * `<address>::print <type>` - Print the specified address as a specific type
+
+  * `::formats` - List the format specifiers
+
+  * `<address>/<format specifier>` - Interpret the data as one of the formats
+
+  * `::bp <address` - Set a breakpoint at the specified address (if a live
+  proces)
+
+  * `::cont` - Continue running (if a live process)
+
+  * `::step` - Single step into the next instruction (if a live process)
+
+  * `::step over` - Single step to the next instruction, but if it is a function
+  call do not descend into it.
+
+  * `<address>::dis` - Disassembles instructions from the specified address.
+
+  * `<rax=K` - Print the register `rax` as a 64-bit hexadecimal value
+
+`mdb` can be used in several different situations. For example, it can be used
+on core files. It can be used on live processes when invoked with the `-p`
+option. Note that this will cause the target to stop. You may also give `mdb` the
+path to a binary executable and then run it entirely under the debugger. `mdb`
+can also give you read access to the kernel state via the `-k` flag. `mdb` can
+also serve as an in-situ debugger for the kernel. We'll touch on that in a bit
+more detail in one of the following sections.
+
+`mdb` can be a bit tricky to ramp up with. To help with that, we'll provide
+examples of debugging core files later on.
+
+### Dynamic Tracing - dtrace
+
+### The Kernel Debugger - kmdb
+
+`kmdb(1)` is the in-situ kernel debugger. It is most commonly activated via boot
+parameters and entered when a user sends a break. When you enter `kmdb`, you
+stop the entire world and when you single step, it steps on only a single CPU.
+Generally speaking, `kmdb` is not the tool you want to use when debugging a
+system. In many cases DTrace can gather what you need without stopping the
+world. `kmdb` becomes most useful when you have to debug something early in boot
+that occurs before you have a dump device available to obtain an operating
+system crash dump. When you need `kmdb`, you really need it.
+
+In terms of operation, `kmdb` is similar to `mdb` except that the set of dcmds
+you have available has changed and is more limited. While you can escape to the
+shell in `mdb`, you have no shell to pipe to in `kmdb`.
+
+If you want to enter `kmdb` immediately during boot you should append `-kd` to
+your boot parameters. If instead you wish to merely activate `kmdb` so you can
+send a break and enter the debugger, you should only pass `-k`. Note that if you
+have passed these and the system panics or is configured to panic when it
+recieves an NMI, then you will also enter the debugger. To enter `kmdb` while
+sitting on the boot console, you should use `mdb -K`.
+
+### elfdump
+
+`elfdump(1)` is a tool which is generally used to display the contents of elf
+sections. You might ask yourself, why is that useful for debugging an
+application core dump? The answer to that is burried in the way that core files
+are generated. In addition to the copies of the program's memory, something
+called ELF notes are inserted into the dump by the kernel. These notes describe
+different aspects of the process, such as the currently open file descriptors,
+the register sets of the threads, the platform that this program was executing,
+and more. This data is progrmatically consumed by the various `ptools` and by
+`mdb`. However, it can sometimes be useful to see these note sections
+themselves, which can be done via `elfdump -n`. Let's look at an example.
+
+```
+$ elfdump -n core.2512
+Note Section:  .note(phdr)
+
+  entry [0]
+    namesz: 0x5
+    descsz: 0x104
+    type:   [ NT_PRPSINFO ]
+    name:
+        CORE\0
+    desc: (prpsinfo_t)
+        pr_state:   4                    pr_sname:    T
+        pr_zomb:    0                    pr_nice:     20
+        pr_flag:    0
+        pr_uid:     1002                 pr_gid:      1
+        pr_pid:     2512                 pr_ppid:     68679
+        pr_pgrp:    68679                pr_sid:      68672
+        pr_addr:    0x700ab0a0           pr_size:     0xcac
+        pr_rssize:  0x8a0                pr_wchan:    0
+        pr_start:
+            tv_sec: 1370814913           tv_nsec:     480822214
+        pr_time:
+            tv_sec: 0                    tv_nsec:     20611244
+        pr_pri:     59                   pr_oldpri:   40
+        pr_cpu:     0
+        pr_ottydev: 1568                 pr_lttydev:  1572896
+        pr_clname:  FSS
+        pr_fname:   bash
+        pr_psargs:  bash ./tools/build_illumos
+        pr_syscall: [ waitid ]
+        pr_ctime:
+            tv_sec: 249                  tv_nsec:     240000000
+        pr_bysize:  0xcac000             pr_byrssize: 0x8a0000
+        pr_argc:    2                    pr_argv:     0x08047870
+        pr_envp:    0x0804787c           pr_wstat:    0
+        pr_pctcpu:  0.0%                 pr_pctmem:   0.0%
+        pr_euid:    1002                 pr_egid:     1
+        pr_aslwpid: 0
+        pr_dmodel:  [ PR_MODEL_ILP32 ]
+
+  entry [1]
+    namesz: 0x5
+    descsz: 0xb0
+    type:   [ NT_AUXV ]
+    name:
+        CORE\0
+    desc: (auxv_t)
+           [0]  SUN_PLATFORM    0x08047fe8
+           [1]  SUN_EXECNAME    0x08047fee
+           [2]  PHDR            0x08050034
+           [3]  PHENT           32
+           [4]  PHNUM           6
+           [5]  ENTRY           0x0806e860
+           [6]  SUN_LDDATA      0xfeffb000
+           [7]  BASE            0xfefb6000
+           [8]  FLAGS           0
+           [9]  PAGESZ          4096
+          [10]  SUN_AUXFLAGS    [ AF_SUN_HWCAPVERIFY ]
+          [11]  SUN_HWCAP       [ VMX PCLMULQDQ AES SSE4.2 SSE4.1 SSSE3 POPCNT TSCP AHF CX16 SSE3 SSE2 SSE FXSR MMX CMOV SEP CX8 TSC FPU ]
+          [12]  SUN_HWCAP2      0
+       [13-21]  NULL            0
+
+...
+
+  entry [4]
+    namesz: 0x5
+    descsz: 0x508
+    type:   [ NT_UTSNAME ]
+    name:
+        CORE\0
+    desc: (struct utsname)
+        sysname:  SunOS
+        nodename: rm-build.lab.joyent.dev
+        release:  5.11
+        version:  joyent_20130405T010449Z
+        machine:  i86pc
+...
+
+  entry [10]
+    namesz: 0x5
+    descsz: 0x440
+    type:   [ NT_FDINFO ]
+    name:
+        CORE\0
+    desc: (prfdinfo_t)
+        pr_fd:        0
+        pr_mode:      [ S_IFCHR S_IRUSR S_IWUSR S_IWGRP ]
+        pr_uid:       1002               pr_gid:      7
+        pr_major:     533                pr_minor:    1
+        pr_rmajor:    6                  pr_rminor:   32
+        pr_ino:       2914889671
+        pr_size:      0                  pr_offset:   11246156
+        pr_fileflags: [ O_RDONLY ]
+        pr_fdflags:   0
+        pr_path:      /dev/pts/32
+
+...
+```
+
+## Build Failures
+
+While developing and working on illumos, the build may fail for a number of
+reasons. It could be because of a typo in the code or you've hit an issue with a
+change due to lint or packaging.
+
+If you're running something inside of `bldenv` you will see the exact line that
+failed as well as the command that caused it. When compiling a piece of C code,
+it first goes through `cw` which takes care of argument differences between Sun
+Studio and GCC. `dmake` by default does a parallel build. It may be easier to do
+a serial build to help track down exactly where the failure is especially if the
+initial error is lost in your scrollback buffer. To do a serial build instead
+run `dmake -m serial <target>`. In this case a code failure might look like:
+
+```
+$ dmake -m serial install
+/home/rm/src/bardiche/projects/illumos/usr/src/tools/proto/root_i386-nd/opt/onbld/bin/i386/cw -_gcc -m64 -Ui386 -U__i386 -xO3 -_gcc=-fno-inline-small-functions  -_gcc=-fno-inline-functions-called-once ../../intel/amd64/ml/amd64.il -D_ASM_INLINES -Xa -xspace  -xmodel=kernel -_gcc=-mno-mmx -_gcc=-mno-sse -Wu,-save_args -v -xildoff  -g -xc99=%all -W0,-noglobal  -Wu,-save_args -xdebugformat=stabs -errtags=yes -errwarn=%all -_gcc=-Wno-address -_gcc=-Wno-missing-braces -_gcc=-Wno-sign-compare -_gcc=-Wno-unknown-pragmas -_gcc=-Wno-unused-parameter -_gcc=-Wno-missing-field-initializers -_gcc=-Wno-parentheses -_gcc=-Wno-unused-label -_gcc=-Wno-uninitialized -_gcc=-Wno-unused-function -_gcc=-fno-inline-small-functions  -_gcc=-fno-inline-functions-called-once  -_gcc=-fno-ipa-cp -W0,-xglobalstatic  -xstrconst -v -D_KERNEL -D_SYSCALL32 -D_SYSCALL32_IMPL -D_ELF64  -D_DDI_STRICT -Dsun -D__sun -D__SVR4 -DDEBUG    -I../../intel -I../../common/fs/zfs -I../../common/io/bpf -Y I,../../common  -c -o debug64/sdev_plugin.o ../../common/fs/dev/sdev_plugin.c
++ /home/rm/src/bardiche/proto.strap/usr/bin/gcc -fident -finline -fno-inline-functions -fno-builtin -fno-asm -fdiagnostics-show-option -nodefaultlibs -D__sun -m64 -mtune=opteron -Ui386 -U__i386 -fno-strict-aliasing -fno-unit-at-a-time -fno-optimize-sibling-calls -O2 -fno-inline-small-functions -fno-inline-functions-called-once -D_ASM_INLINES -ffreestanding -mno-red-zone -mno-mmx -mno-sse -msave-args -Wall -Wextra -gdwarf-2 -std=gnu99 -msave-args -Werror -Wno-address -Wno-missing-braces -Wno-sign-compare -Wno-unknown-pragmas -Wno-unused-parameter -Wno-missing-field-initializers -Wno-parentheses -Wno-unused-label -Wno-uninitialized -Wno-unused-function -fno-inline-small-functions -fno-inline-functions-called-once -fno-ipa-cp -D_KERNEL -ffreestanding -D_SYSCALL32 -D_SYSCALL32_IMPL -D_ELF64 -D_DDI_STRICT -Dsun -D__sun -D__SVR4 -DDEBUG -I../../intel -I../../common/fs/zfs -I../../common/io/bpf -nostdinc -I../../common -c -o debug64/sdev_plugin.o ../../common/fs/dev/sdev_plugin.c -mcmodel=kernel 
+../../common/fs/dev/sdev_plugin.c: In function 'sdev_plugin_vop_readdir':
+../../common/fs/dev/sdev_plugin.c:325: error: 'sp' undeclared (first use in this function)
+../../common/fs/dev/sdev_plugin.c:325: error: (Each undeclared identifier is reported only once
+../../common/fs/dev/sdev_plugin.c:325: error: for each function it appears in.)
+*** Error code 1
+make: Fatal error: Command failed for target `debug64/sdev_plugin.o'
+Current working directory /home/rm/src/bardiche/projects/illumos/usr/src/uts/intel/dev
+*** Error code 1
+The following command caused the error:
+BUILD_TYPE=DBG64 VERSION='joyent_20130918T033911Z' /home/rm/src/bardiche/proto.strap/usr/bin/dmake  install.targ
+make: Fatal error: Command failed for target `install.debug64'
+Current working directory /home/rm/src/bardiche/projects/illumos/usr/src/uts/intel/dev
+```
+
+From here it's simply understanding the compiler errors. Something worth
+remembering is that often times your first error may cause several others that
+don't make sense. Always go back and look at the very first thing that failed. A
+missing brace or semicolon can cause any number of odd errors in the rest of
+your program to appear.
+
+
+When using nightly, you need to do a little bit more digging to get to the
+answer. Recall that nightly produces two files which are useful: `mail_msg` and
+`nightly.log`.
+
+The `nightly.log` contains a record of everything that took place during the
+build. Every compilation and program execution ends up in `nightly.log` and a
+large portion of the `mail_msg` is constructed from `nightly.log`.
+
+The `mail_msg`, on the other hand, is a high level summary of the build itself.
+The file is called the `mail_msg` as you can have `nightly(1)` send you a build
+summary via e-mail when it finishes. It contains the time each part of the
+build took, as well as sections on compiler warnings and errors, lint warnings
+and errors, and warnings and errors from the build's consistency checks. It will
+also show the differences from one build to the next so that way you can see
+what has changed from one build to the next. When you have a fully successful
+build, you should not see any warnings or errors show up in the file. 
+
+When you do, there are a few things to look at. If it happens that the build
+itself failed due to a compiler error, you're likely to see a lot of noise in
+the `mail_msg`. `nightly` tries very hard to build as much as possible in a
+given pass, therefore it is likely that you'll see a lot of output, but the only
+error you care about is the very first one that occurs. The best way to find it
+is to leave the `mail_msg` behind and journey into the `nightly.log`.
+
+`dmake` notes errors in a rather predictable pattern. The errors are always
+prefixed on a line with a series of three asterisks: `***`. One of the easiest
+ways to find the first failure is to open up `nightly.log` in your favorite text
+editor and search for the regular expression: `\*\*\*`. Note that the escape
+characters are important as otherwise you'll likely match everything. Once you
+find where the first error occurs, you'll generally want to enter `bldenv` and
+run the failed `dmake install` or similar command that failed. Using `bldenv`
+gets you into a much tighter feedback loop and makes it easier to experiment
+with fixes.
+
+It's also possible for the build to fail or cause lint warnings to appear.
+Similar to compiler warnings and errors the strategy here is pretty much the
+same. You'll want to figure out which target explicitly failed and go back and
+run that yourself inside of `bldenv` to clean that and related warnings up
+before continuing on.
+
+There are a few other related kinds of warnings to deal with:
+
+  * Package manifest errors
+
+	This means that a packaging manifest file that you modified or created
+	has errors inside of it. If it is a style error, then the build will
+	tell you how to fix it through an invocation of `pkgfmt`. If you run
+	that, you should validate that all of your changes are still there
+	afterwards.
+
+	This could also fail because there is an error in the manifest such as
+	referencing a file which does not exist. You should edit the manifest to
+	correct this and then rerun the packaging part of the build to ensure
+	that  you have fixed the problem.
+
+  * Files that are in the proto area, but not packaged.
+
+	All files that end up in the proto area must be accounted for. That
+	means that they must either be included in some package or they must be
+	put into an exception list. Generally, it is expected for most files
+	that enter the proto area to be packaged.
+
+	An exception to this might be a library which various components might
+	link against at build time but is considered private to the
+	implementation. That means that the library itself, libfoo.so.1, will be
+	shipped; however, libfoo.so, and its header file foo.h will not be. The
+	header and compilation symlink will show up in the proto area, but they
+	will not be packaged and therefore should be added to the exception
+	list. That list resides in the root of your workspace at
+	`exception_lists/packagine`.
+
+  * `cstyle` and `hdrchk` errors
+
+  	With few exceptions, all files should be `cstyle` and `hdrchk` clean.
+	You should fix any errors that arise from `cstyle` and `hdrchk`. You can
+	see the state of these at any time by running `git pbchk` against
+	locally committed changes. If you believe that something you're working
+	on should be excepted, please consult the advocates.
+
+  * Changes in ELF runtime attributes.
+
+  	When doing multiple iterations of nightly, this section notes what
+	changes have occurred in ELF attributes for shared objects and binaries.
+	This is checking if the shared objects that are required have changed as
+	well as the minimum version of them. Generally you should not see
+	anything in there related to your changes unless you have been adding
+	symbols to libraries and using them in new commands.
+
+	Note that when you sync up with the gate, you will see changes in this
+	section if someone has added new libraries, binaries, and dynamic
+	plugins.
+
+  * Missing shared libraries and versions from `check_rtime`
+
+  	`check_rtime` does a consistency check on the objects in the proto area.
+	If you see something showing up as missing a shared library or being
+	unable to find a version of a library, you should immediately stop and
+	figure out what happened -- the contents of what you build should be
+	suspect and there is no guarantee that they will work. Understanding the
+	exact nature of these kinds of changes are some of the trickiest
+	problems to diagnose, so do not hesitate to ask for additional help if
+	you find yourself confused.
+
+  * Core dumps found
+
+  	One of the final parts of nightly involves finding programs that have
+	dumped core during the build process. In general, nothing should be
+	dumping core so you should immediately go and investigate what has
+	happened before you consider doing a put back.
+
+## Core Dumps
+
+From time to time, programs will end up crashing and result in a core dump due
+to accessing bad memory, an explicit abort, or some other error. When this
+happens, a program should leave behind a core dump. You can make sure that you
+have core dumps enabled and related settings by running `coreadm`. If you know
+that you already have core dumps enabled, go ahead and skip this next section.
+
+### Testing Core Dumps
+
+To test that core dumps are enabled we're going to write a simple C program that
+will call `abort(3C)` and generate a core file.
+
+```
+$ cat <<EOF > abort.c
+#include <stdlib.h>
+
+int
+main(void)
+{
+	abort();
+	return (0);
+}
+EOF
+$ gcc -o abort abort.c
+$ ./abort
+Abort (core dumped)
+$ ls core.abort.*
+core.abort.54117
+$
+```
+
+You should now see a core file in the current directory. To verify that it came
+from our process you can run the `file` command on it and it will print out
+basic information about the program. If a core dump was not generated, you
+should check the settings for core dumps which are controlled by the program
+`coreadm(1M)`.
+
+### First Steps with Core Dumps
+
+Whenever you have a core dump, the first thing to do is to fire up `mdb(1)` on
+the core file to get a sense of what has gone on. Whenever I first open up a
+core file I run a few simple commands to get the most basic picture:
+
+   * `::status` to give the reason that the process dumped core.
+   * `$C` to get the stack back trace that dumped core
+
+Based on these you already have a good idea of where to start looking. For
+example, if the program blew an assertion or called abort, `::status` will point
+that out and `$C` will show you where you ended up in the program. This
+immediately points you in the right direction in the program source to indicate
+where things might have gone wrong.
+
+More often though, you end up having to figure out a little bit more about what
+went wrong. For example, if a program dereferences a bad address you'll need to
+spend some time to figure out how exactly your program ended up at the bad
+address. When this happens the first thing to do is to establish first *what*
+went wrong and then you can establish *why* it occurred.
+
+To better establish the *what*, you'll need to pinpoint what address was
+incorrectly used and where it nominally came from. To do that, I first look at
+the specific instructions through the disassembler and correlate that with the
+code in question. To find the code in question, take a look again at '$C' and
+take the function and offset and pipe into the disassembler. A shortcut for this
+is to take the instruction pointer directly and send it to the disassembler.
+
+The disassembler is run via the command `::dis`. `::dis` expects an address to
+start disassembling at. So in the case of a 32-bit x86 program you would run the
+following:
+
+```
+$ mdb core.abort.54117
+Loading modules: [ libc.so.1 ld.so.1 ]
+> <eip::dis
+> <eip::dis
+libc.so.1`_lwp_kill:            call   +0x0     <libc.so.1`_lwp_kill+5>
+libc.so.1`_lwp_kill+5:          popl   %edx
+libc.so.1`_lwp_kill+6:          movl   $0xa3,%eax
+libc.so.1`_lwp_kill+0xb:        movl   %esp,%ecx
+libc.so.1`_lwp_kill+0xd:        addl   $0x10,%edx
+libc.so.1`_lwp_kill+0x13:       sysenter 
+libc.so.1`_lwp_kill+0x15:       jae    +0xc     <libc.so.1`_lwp_kill+0x23>
+libc.so.1`_lwp_kill+0x17:       cmpl   $0x5b,%eax
+libc.so.1`_lwp_kill+0x1a:       jne    +0x9     <libc.so.1`_lwp_kill+0x25>
+libc.so.1`_lwp_kill+0x1c:       movl   $0x4,%eax
+libc.so.1`_lwp_kill+0x21:       jmp    +0x2     <libc.so.1`_lwp_kill+0x25>
+libc.so.1`_lwp_kill+0x23:       xorl   %eax,%eax
+libc.so.1`_lwp_kill+0x25:       ret    
+>
+```
+
+That specifically says read in the current value of `rip` the instruction
+pointer and start disassembling at that address. In conjunction with that, it's
+often quite useful to look at the register state of the program. To see the
+general purpose registers of the thread you can run `$r`. This looks like:
+
+```
+> $r
+%cs = 0x0043            %eax = 0x00000000 
+%ds = 0x004b            %ebx = 0xfef59000 
+%ss = 0x004b            %ecx = 0x08047b8c 
+%es = 0x004b            %edx = 0x00000000 
+%fs = 0x0000            %esi = 0x08047c10 
+%gs = 0x01c3            %edi = 0x08047ccc 
+
+ %eip = 0xfeeeaa25 libc.so.1`_lwp_kill+0x15
+ %ebp = 0x08047ba8
+%kesp = 0x00000000
+
+%eflags = 0x00000282
+  id=0 vip=0 vif=0 ac=0 vm=0 rf=0 nt=0 iopl=0x0
+  status=<of,df,IF,tf,SF,zf,af,pf,cf>
+
+   %esp = 0x08047b8c
+%trapno = 0xe
+   %err = 0x14
+>
+```
+
+Other common and useful dcmds are `::stacks` which summarizes all of the active
+stacks and `::walk thread` which is an mdb walker that prints out all the
+current threads. Finally if a program has CTF included, you can print out its
+data structures via ::print. To see an example of this, fire up the kernel
+debugger and let's print out the name of every process running on the system.
+
+```
+$ mdb -k
+Loading modules: [ unix genunix specfs dtrace mac cpu.generic uppc apix
+scsi_vhci ufs ip hook neti sockfs arp usba stmf_sbd stmf zfs lofs mpt idm crypto
+random cpc logindmux ptm kvm sppp nsmb smbsrv nfs sd ipc ]
+> ::walk proc | ::print proc_t p_user.u_comm
+p_user.u_comm = [ "sched" ]
+p_user.u_comm = [ "zpool-zones" ]
+p_user.u_comm = [ "fsflush" ]
+p_user.u_comm = [ "pageout" ]
+p_user.u_comm = [ "init" ]
+p_user.u_comm = [ "lldpd" ]
+p_user.u_comm = [ "nscd" ]
+p_user.u_comm = [ "devfsadm" ]
+p_user.u_comm = [ "syseventd" ]
+p_user.u_comm = [ "powerd" ]
+p_user.u_comm = [ "pfexecd" ]
+p_user.u_comm = [ "dlmgmtd" ]
+p_user.u_comm = [ "ipmgmtd" ]
+p_user.u_comm = [ "svc.configd" ]
+p_user.u_comm = [ "svc.startd" ]
+p_user.u_comm = [ "login" ]
+p_user.u_comm = [ "bash" ]
+p_user.u_comm = [ "mdb" ]
+p_user.u_comm = [ "ttymon" ]
+...
+>
+```
+
+Here, we used an mdb _walker_ which iterates over every process and passes it in
+a pipeline to the next command, which is the dcmd `::print`. Here, we first
+specified the type that we wanted mdb to interpret the data as, and then we
+specified a member that we wanted it to print. One thing that's neat, is that
+mdb will follow pointers and continue to dereference things and allow you to
+specify the type. That's how we went from the `proc_t` which includes another
+structure that actually has the name of the user information about the process
+that comes up in `/proc`.
+
+If you find yourself lost for finding out the name of a member, mdb supports tab
+completion, so hit tab and it'll help you out!
+
+### Panics
+
+When you first find yourself faced with a panic, you're going to want to take
+similar actions to core dumps. The first thing to do is to make sure that dumps
+are enabled. Run the `dumpadm` command and make sure that it says that dumps are
+enabled.
+
+```
+# dumpadm
+      Dump content: kernel pages
+       Dump device: /dev/zvol/dsk/zones/dump (dedicated)
+Savecore directory: /var/crash/volatile
+  Savecore enabled: yes
+   Save compressed: on
+```
+
+After a machine panics it will produce a crash dump in the directory specified
+earlier in `dumpadm`, commonly `/var/crash/volatile` by default. There you will
+see a file called `vmdump.0`. That is the compressed kernel core dump. The first
+thing to do is to decompress it. You can do this by running:
+
+```
+# cd /var/crash/volatile
+# savecore -vf vmdump.0 .
+# savecore -vf vmdump.0 .
+2014-10-17T19:26:09.989952+00:00 00-0c-29-37-80-28 savecore: [ID 570001 auth.error] reboot after panic: rw_exit: lock not held, lp=ffffff0248c6e0e8 wwwh=0 thread=ffffff025addc400
+savecore: System dump time: Thu Nov 28 15:52:16 2013
+
+savecore: saving system crash dump in ./{unix,vmcore}.0
+Constructing namelist ./unix.0
+Constructing corefile ./vmcore.0
+ 0:16 100% done: 519044 of 519044 pages saved
+2494 (0%) zero pages were not written
+0:16 dump decompress is done
+#
+```
+
+Next, you'd want to go into mdb and start interrogating the dump. The first two
+things that one should always run are `::status` and `$C` which will give us a
+good idea of where to start looking:
+
+```
+# mdb 2
+> ::status
+debugging crash dump vmcore.2 (64-bit) from 00-0c-29-37-80-28
+operating system: 5.11 joyent_20130919T215407Z (i86pc)
+image uuid: (not set)
+panic message: rw_exit: lock not held, lp=ffffff0248c6e0e8 wwwh=0 thread=ffffff025addc400
+dump content: kernel pages only
+> $C
+ffffff000c3b4ae0 vpanic()
+ffffff000c3b4b10 rw_panic+0x6f(fffffffffb92ab38, ffffff0248c6e0e8)
+ffffff000c3b4b60 rw_exit_wakeup+0xde(ffffff0248c6e0e8)
+ffffff000c3b4bc0 iplread+0x8a(bb00000003, ffffff000c3b4df0, ffffff02956f66c8)
+ffffff000c3b4bf0 cdev_read+0x2d(bb00000003, ffffff000c3b4df0, ffffff02956f66c8)
+ffffff000c3b4c90 spec_read+0x2b9(ffffff025c09e580, ffffff000c3b4df0, 0, ffffff02956f66c8, 0)
+ffffff000c3b4d30 fop_read+0x8b(ffffff025c09e580, ffffff000c3b4df0, 0, ffffff02956f66c8, 0)
+ffffff000c3b4e90 read+0x2a7(3, 8066000, 200)
+ffffff000c3b4ec0 read32+0x1e(3, 8066000, 200)
+ffffff000c3b4f10 _sys_sysenter_post_swapgs+0x149()
+```
+
+Just by looking at this information, we already have a good starting point to
+start digging into what happened here and know where to start looking. In this
+case, in this code which was under development, we accidentally called `rw_exit`
+without actually holding the lock itself. Based on the stack, we knew where to
+start looking and could start digging in.
+
+### Hangs
+
+Another annoying case is that the system might hang. When the system does this,
+there are a few options at your disposal. If your system supports it, you should
+generate what's called a `NMI` or non-maskable interrupt. On many servers with
+support for IPMI, this can be done by running the `chassis power diag` command
+with `ipmitool`. Consult your vendor's documentation on how to generate an NMI.
+
+However, if your hardware doesn't have the ability to generate an NMI, there are
+a couple other options for you which vary depending on the nature of the hang.
+If you can still access the machine, you can use mdb to force the system to
+panic and generate a dump that can be inspected post-mortem. To do that, you
+would run:
+
+```
+# mdb -kw
+> $<systemdump
+```
+
+Sometimes, the hang can happen in a way which will lock you out of your ability
+to access the system or log in. When this happens, if you start to have some
+idea of how to reproduce it, you can do a few things. The first is to use `kmdb`
+at boot time and set the variable `snooping` to non-zero. This will act as a
+deadman and cause the system to panic if certain kinds of activity do not occur,
+by default within 50 seconds. To enable that, you would run in the kmdb prompt:
+
+```
+Loading kmdb...
+
+Welcome to kmdb
+kmdb: unable to determine terminal type: assuming `vt100'
+Loaded modules: [ unix krtld genunix ]
+[0]>  snooping/W 1
+snooping:       0               =       0x1
+[0]> :c
+```
+
+Another approach to this, is to use a DTrace destructive action. For example, if
+you know that something you're going to do will hang, you could have a probe
+which will tick in say one minute, and then panic the system. Note, this
+requires you to enable destructive actions. The following DTrace one liner would
+do the trick:
+
+```
+# dtrace -wn 'tick-60s{ panic(); }'
+```
+
+## What's Next? 
+
+This section is meant to serve as a basic introduction to debugging and is by no
+means exhaustive. If you encounter a bug that causes a program to crash and
+generate a core dump or causes the system to panic, here are a few things you
+can do next.
+
+The first thing you should consider doing is going and filing a bug, by going to
+[http://illumos.org/bugs/](the illumos bug tacker). If you don't have an
+account, don't let that stop you and hop into IRC or ask about it on a mailing
+list. We want to know when bugs and panics occur so we can fix them!
+
+For additional information on using these tools, you should check out the
+[http://dtrace.org/guide](DTrace guide) and [http://illumos.org/books/mdb](the
+MDB book).
+
+If you find yourself stuck, or are uncertain of where to go next, please reach
+out to the community, we're happy to help. Again, the best places to do that are
+either coming into `#illumos` on `irc.freenode.net` or mail the illumos
+developers list.

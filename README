@@ -1,0 +1,20 @@
+ _ _ _                           
+(_) | |_   _ _ __ ___   ___  ___ 
+| | | | | | | '_ ` _ \ / _ \/ __|
+| | | | |_| | | | | | | (_) \__ \
+|_|_|_|\__,_|_| |_| |_|\___/|___/
+
+ ____                 _                       _        ____       _     _      
+|  _ \  _____   _____| | ___  _ __   ___ _ __( )___   / ___|_   _(_) __| | ___ 
+| | | |/ _ \ \ / / _ \ |/ _ \| '_ \ / _ \ '__|// __| | |  _| | | | |/ _` |/ _ \
+| |_| |  __/\ V /  __/ | (_) | |_) |  __/ |    \__ \ | |_| | |_| | | (_| |  __/
+|____/ \___| \_/ \___|_|\___/| .__/ \___|_|    |___/  \____|\__,_|_|\__,_|\___|
+
+
+This guide serves to document the illumos build system and how to work
+inside of it. If you find issues, typos, or want additional content,
+please file a bug at http://github.com/illumos/dev-guide. You can find a
+browseable copy of this work at http://illumos.org/books/dev.
+
+To build this, first ensure python is installed. Then, run either dmake
+or gmake. The resulting files are placed in the output/ directory.

@@ -1,0 +1,104 @@
+# Welcome to the illumos developer's guide!
+
+Welcome to illumos! We're excited that your'e interested in doing work on this
+project. This guide covers the basic workflow for developing illumos and then
+dives into specific detail on everything from the layout of the gate to several
+HOWTOs. Whether this is your first time working with illumos or you remember
+back when the code in the gate all referred to something called SunOS, this
+guide will help you in enhancing and fixing illumos.
+
+## What is illumos?
+
+illumos is a consolidation of software that forms the core of an Operating
+System. It includes the kernel, device drivers, core system libraries, and
+utilities. It is the home of many technologies include ZFS, DTrace, Zones, ctf,
+FMA, and more. We pride ourselves on having a stable, highly observable, and
+technologically different system. In addition, illumos traces it roots back
+through Sun Microsystems to the original releases of `UNIX` and `BSD`.
+
+## Guide Layout
+
+This guide is broken into the following sections:
+
+
+  * Basic illumos workflow
+
+  This section aims to get a new developer up and building illumos. It covers
+  what to do from first clone through putback. If you're just getting started
+  with illumos, this is where you should start.
+
+
+  * illumos Guidelines and Principles
+
+  This section covers various core guidelines we have when working inside of
+  illumos gate. It also goes into detail about several of the guiding
+  engineering principles that have been guided this project from its time at Sun
+  through to today.
+
+
+  * Source Tree Layout and Makefile System
+
+  This walks through the layout of the source tree. This covers where different
+  components live and the general design of the illumos source tree as well as
+  an introduction to the Makefile structure and top level targets in the tree.
+
+
+  * Component Anatomy, Creating and Modifying Components
+
+  This sections covers working in specific components of the kernel. It first
+  covers the anatomy of different libraries, commands, and kernel modules, and
+  device drivers. It then builds on top of this and discusses how to modify
+  existing ones as well as how to create new ones. Makefiles, dealing with 3rd
+  party source code, CTF data, and other issues that come up when building new
+  components.
+
+
+  * Debugging
+
+  And then it all went terribly wrong -- processes core dumping and operating
+  systems panicking. Don't panic! This section introduces you to tools and
+  techniques for investigating such problems and help you along the road to root
+  causing such issues. It also briefly discusses how to control the generation
+  of such dumps as well as introducing system tools like mdb(1) and dtrace(1m).
+
+
+  * Integrating Changes
+
+  This section covers best practices around testing, getting necessary review,
+  and getting changes inside of the gate.
+
+
+  * Getting Help
+
+  This section covers where to go with questions and how to get additional help
+  on working with illumos, this document, or anything else that might come up.
+
+
+  * Appendix: Documentation License
+
+## Conventions
+
+The following describes the current typographical conventions in use in this
+document.
+
+When text begins as follows, it indicates that it's being run as a normal user
+shell:
+
+```
+$
+```
+
+When text begins as follows, it indicates that it is being run as a super-user's
+shell:
+
+```
+#
+```
+
+When text is formatted as `name(number)` that indicates that it is referring to
+the command with the name `name`, and in the section described by number. For
+example, read(2) refers to the read function in section 2 of the manual page,
+while ctf(4), would refer to the manual page on the CTF file format which is in
+section 4,  and finally connect(3SOCKET), refers to the connect function that's
+found in the `3SOCKET` section of the manual, which are functions that are a
+part of the library, `libsocket`.

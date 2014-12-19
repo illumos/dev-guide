@@ -1,0 +1,195 @@
+# Integrating Changes
+
+## Introduction
+
+This section of the developer's guide covers the integration process, what you
+need to do before you integrate, and what you need to provide for integration.
+This will also cover best practices and suggestions around testing as well as
+tips and advice to prove a smooth integration process.
+
+## RTI process
+
+When you want to submit a change into illumos, we call that a request to
+integrate, or RTI. illumos has no single person that serves as a gatekeeper. An
+RTI is sent to the advocates. An advocate who is familiar with the subject
+matter will review the materials and either accept or reject the RTI. If it is
+accepted, the advocate will push those change into illumos. If it is rejected,
+the advocate will explain why, for example inadequate testing, and you can
+return when you have corrected those issues. The advocates is made up of members
+of the community and while they have commit access to the gate, they are also
+required to go through the same process.
+
+### The Requirements
+
+When you come to the advocates, you are required to have a few different pieces
+of information. We'll start off by listing them now, and go into more detail a
+bit later about each of them.
+
+  * List of Reviewers
+
+  * Explanation of Testing
+
+  * The output of `git pbchk`
+
+  * Nightly build `mail_msg`
+
+  * The change itself (output of `git format-patch`)
+
+### Shrink to Fit
+
+There is a fair bit there, but this whole process is designed to be shrink to
+fit. If because of what you're working on there are parts of the above list
+which do not apply, then you should not include them. For example, if you are
+fixing a typo in a manual page, then you do not need to do a full nightly build
+and the only testing you need to do is to make sure that you didn't add any
+rendering pages to the new manual page.
+
+At the end of the day, it is the advocates who are responsible for determining
+whether or not something is sufficient. If you have opted to pass on one of the
+requirements believing that it is not necessary, but the advocate feels that it
+does, then you must address that.
+
+### Review
+
+Having reviewers for your change is one of the more important aspects of the RTI
+process. Review is used to not only be a sanity check, but a defense against
+broken code. Changes must have at least one reviewer, but the number is less
+important than the quality of said reviewers.
+
+Many of the original authors of various kernel subsystems and user land
+components are involved in the illumos community. Having a single reviewer who
+intimately knows the workings of a given subsystem is invaluable. For example,
+if you're making a change to ZFS, but none of your reviewers has ever done any
+work in ZFS before, then that may be a warning sign to your advocate.
+
+If a reviewer is not satisfied, you may not list them as a reviewer when
+submitting your RTI. Furthermore, if there are issues or disagreements about
+things between you and your reviewers, that is something that you need to tell
+the advocates.
+
+When providing materials for review, the best form of this is a `webrev`. For
+information on generating it, please read [the workflow section on
+webrev](./workflow.html#webrev). If you have written custom testing software,
+you should make that available. This will not only help reviewers better
+understand how your changes work, but they will also be able to provide feedback
+on the testing and may be able to find cracks in the test plan.
+
+#### Finding Reviewers
+
+Sometimes it can be challenging to find reviewers. Often times there may be no
+subject matter expert in the community. If you're uncertain of who should review
+your work, you can send mail to the illumos developer list
+`developer@lists.illumos.org`. There exist a large number of people on the list
+who are willing to help review work. For complicated or large changes, you'll
+want to give your reviewers plenty of time to do their work. Thorough reviews
+are complicated.
+
+illumos also has sublists for different aspects of the system. If your change
+deals with that area, you should consider sending it to that list. While there
+are less people on these lists, they generally have more familiarity and
+expertise with that specific area of code. These lists include:
+
+  * `zfs@lists.illumos.org` for ZFS related changes
+  * `dtrace-discuss@lists.dtrace.org` for DTrace related changes
+  * `networking@lists.illumos.org` for networking related changes.
+
+There is no requirement for sending mail to a public list for review if you
+already feel that you have adequate reviewers. Keep in mind that in addition to
+ensuring your changes are correct, part of the point of soliciting review and
+having reviewers who are familiar with the area is to aid in showing your
+advocate that your changes are correct.
+
+### Testing
+
+You are required to do enough testing such that not only you, but others can be
+confident in your changes. Testing is one place where it's really shrink to fit.
+For example, the amount of testing involved for adding a new argument to the
+command `head` is much less than making a change to ZFS. As part of the RTI
+process, you will need to have a description of *how* you tested it. The how
+aspect is what your advocate cares about, it's assumed that your tests pass. 
+
+#### Test Suites
+
+Several components already have a full and involved test suite such as the ZFS
+and DTrace test suites. If you're working in an area where that already exists,
+you should run those test suites to help you gain confidence that not only does
+your code work, but that you have not introduced any regressions.
+
+If you write a test suite, you should consider including it into the gate. This
+will allow others to benefit from your work and further allow us to help ensure
+that no regressions have been introduced as a side effect of another change.
+
+#### Other Testing Areas
+
+There are several areas that often get overlooked for testing. If you're working
+in a daemon or a kernel subsystem, you'll want to run a debug build and check
+for memory leaks in the kernel via a crash dump, `mdb(1)`, and `::findleaks`, or
+via `libumem` when working with user land programs and daemons.
+
+If you are working in an area that is performance sensitive you should gather
+performance data on a non-debug build. You should be able to convince yourself
+that there are no regressions as a side effect of your change.
+
+### git pbchk
+
+Part of the material that you need to submit includes the output of `git pbchk`.
+As discussed in the [workflow section](./workflow.html#pbchk), you should be
+`git pbchk` clean.
+
+### nightly `mail_msg`
+
+If you are making changes to code, you should provide the output of a full
+nightly. You should not run an incremental nightly. It is important that you
+have not introduced any build noise that is caught by lint and the make check
+targets. Similarly, if you have touched anything to do with pacakges, you must
+ensure that your nightly flags build the packages and that you run a `protocmp`
+which checks everything that is in the proto area.
+
+### Delta
+
+The advocates are going to apply your changes to the gate. As we are using
+`git`, the best way to do this is by attaching the output of `git format-patch`.
+While `webrev` generates a patch, it isn't always the most useful, as it leads
+to people trying to manually add missing files which can be an error prone
+process.
+
+If isn't required for you to have merged your changes into the head of the tree,
+but if your advocate is doing so and runs into substantial trouble with that,
+they may come back to you and ask you to sync up your changes and provide an
+updated patch.
+
+## Submitting
+
+Once you have prepared all of the different components, it's time to submit your
+change to the advocates list. You should prepare an e-mail and address it to
+`advocates@lists.illumos.org` with a subject line that describes the changes
+that you wish to integrate, for example, use a list of the bug ids or a subject
+which describes the work you're doing such as 'libproc enhancements'. You should
+include the following in the e-mail:
+
+  * The list of reviewers (commonly folks use the commit message for this)
+  * A description of the testing and links to the tests if applicable
+  * The output of `git pbchk`
+
+You should attach the following in your e-mail:
+
+  * The `git format-patch` for your change
+  * The nightly `mail_msg`
+
+You should expect the advocates to get back to you promptly, in general give
+them a day before you nag them.
+
+### When Advocates Drop the Ball
+
+Like the rest of us, the advocates are human, and occasionally a given change
+might fall through the cracks. It could be that the advocate most familiar with
+your area. If an advocate needs time to review the contents of the change or has
+questions regarding the nature of it and requests more time, that advocate
+should tell you that. The advocates do not want to have changes feel like they
+are sitting in limbo.
+
+If you don't hear from them within a day or two, send a friendly reminder as a
+reply to that e-mail. If an advocate is free in `#illumos` on IRC, politely ask
+them. Please remember to send a given change to all of the advocates. If you
+send a given change to just one of them, that is a recipe for having your change
+get dropped.

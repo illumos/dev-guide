@@ -1,0 +1,27 @@
+# Appendix: Documentation License
+
+This document is the work of the illumos community; however, it owes portions of
+its roots to the 'OpenSolaris Developer's Reference' released by Sun
+Microsystems.
+
+The contents of this Documentation are subject to the Public Documentation
+License Version 1.01 (the "License"); you may only use this Documentation if you
+comply with the terms of this License. A copy of the License is available at
+[http://illumos.org/license/PDL].
+
+Portions of this docuemntation are derived from the 'OpenSolaris Developer's
+Reference'. The original writer of that work is Sun Microsystems (c) 2006. All
+rights reserved. Contact available at [http://sun.com"]. That document is
+licensed under the `PDL`.
+
+The original writers of this document and the contributors to the above
+mentioned document is Robert Mustacchi. Copyright (c) 2014, Joyent, Inc.  All
+rights reserved. Contact available at [http://joyent.com].
+
+This documentation was derived from the source at
+[https://github.com/illumos/dev-guide]. For the full change log, please
+refer to the above URL.
+
+This work is indebted to many authors and editors who have contributed to it.
+The full list of them and contact information as necessary for the `PDL` is
+available in the git repository.
