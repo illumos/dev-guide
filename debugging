@@ -554,7 +554,7 @@ more detail in one of the following sections.
 `mdb` can be a bit tricky to ramp up with. To help with that, we'll provide
 examples of debugging core files later on.
 
-### Dynamic Tracing - dtrace
+### Dynamic Tracing - DTrace
 
 ### The Kernel Debugger - kmdb
 
