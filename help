@@ -83,7 +83,8 @@ reproduce and fix issues much faster.
 ## Errors and Suggestions with this Document
 
 This document maintains an issue tracker on its github repository located at
-XXX[%d]. Whether you encounter a typo, have a suggestion for this document, a
+[](https://github.com/illumos/dev-guide/issues).
+Whether you encounter a typo, have a suggestion for this document, a
 question about it, or anything else, please feel create a ticket. Various
 members of the community who have helped create and shape this document are
 available on IRC. If you have questions or constructive complaints, please let
