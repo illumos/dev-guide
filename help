@@ -82,13 +82,14 @@ reproduce and fix issues much faster.
 
 ## Errors and Suggestions with this Document
 
-This document maintains an issue tracker on its github repository located at
-XXX[%d]. Whether you encounter a typo, have a suggestion for this document, a
-question about it, or anything else, please feel create a ticket. Various
-members of the community who have helped create and shape this document are
-available on IRC. If you have questions or constructive complaints, please let
-them know. If you report typos, broken links, or other similar issues and can
-provide a patch to fix this, that would be greatly appreciated. This document is
-for the community and maintained by it. If you find that there is a major
-section of content that is missing, please check in with the authors about how
-best to integrate this before writing.
+This document maintains an issue tracker on its github repository located
+[here](https://github.com/illumos/dev-guide/issues). Whether you encounter a
+typo, have a suggestion for this document, a question about it, or anything
+else, please feel create a ticket. Various members of the community who have
+helped create and shape this document are available on IRC. If you have
+questions or constructive complaints, please let them know. If you report typos,
+broken links, or other similar issues and can provide a patch to fix this, that
+would be greatly appreciated. This document is for the community and maintained
+by it.  If you find that there is a major section of content that is missing,
+please check in with the authors about how best to integrate this before
+writing.
