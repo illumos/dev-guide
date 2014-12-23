@@ -474,6 +474,27 @@ ld.so.1(1). You have to exercise caution when using these. Your
 `libc.so.1` and kernel must always match! If they don't, a lot can manage to go
 wrong and be very hard to debug. It is always safest to just boot your new bits!
 
+### Binary Verification between proto areas
+
+Sometimes it is good to know the differences your changes introduce to the
+produced binaries between builds. The tool for this job is
+[`wsdiff(1)`](http://illumos.org/man/1onbld/wsdiff)
+and it can be enabled to run between builds if you specify `-w` in
+`NIGHTLY_OPTIONS`.
+
+Checking the differences of your produced binaries between changes can prove
+really helpful in verifying that you changed what you intended to. For
+example, let's say that you have removed some unused code from some part of a subsystem.
+If the code was indeed unused, then the binary of that subsystem should not look any
+different from what it looked previously. Another example is when you want to make
+sure that your changes did not affect other parts of the codebase by mistake.
+
+On a small note, remember that DEBUG builds carry macros like `__LINE__` that
+emit line numbers. As a result, it is expected that some differences that have
+to do with changes in the actual source files will pop up in such builds. It
+is advisable that `wsdiff` is ran between NON-DEBUG builds for cleaner
+output.
+
 ## Committing your Work
 
 As you make progress, you should feel free to make incremental commits in your
