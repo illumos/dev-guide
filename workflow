@@ -474,6 +474,32 @@ ld.so.1(1). You have to exercise caution when using these. Your
 `libc.so.1` and kernel must always match! If they don't, a lot can manage to go
 wrong and be very hard to debug. It is always safest to just boot your new bits!
 
+### Binary verification between proto areas
+
+Depending on the nature of your change, it can be useful to understand the
+differences between binaries that your changes introduced. Checking the
+differences of the produced binaries between changes can verify that you changed
+what you intended to. For example, let's say that you have removed what you
+believe is unused code from a subsystem.  If the code was indeed unused, then
+the binary should be almost identical to the binary from the previous build.
+Another use is to verify that your change did not unintentionally affect
+another part of the codebase.
+
+illumos provides a tool that can verify this automatically: 
+[`wsdiff(1)`](http://illumos.org/man/1onbld/wsdiff). To run `wsdiff`, specify
+`-w` in your `NIGHTLY_OPTIONS`. For `wsdiff` to work, it needs to be run between
+two consecutive builds. Therefore, the common workflow is to first build the
+gate with `nightly`, make your changes, and then run `nightly` again, but this
+time with `wsdiff` enabled.
+
+`wsdiff` isn't perfect. There are a few things can cause noise to show up in its
+output. For example, the illumos `DEBUG` builds often carry macros like
+`__LINE__` that emit line numbers and DTrace probes will often have a part of
+the DOF section change which encodes information about how it ws generated. As a
+result, it is expected that some differences that have to do with changes in the
+actual source files will pop up in such builds. You may find that `wsdiff` is
+easier to use with `non-DEBUG` builds.
+
 ## Committing your Work
 
 As you make progress, you should feel free to make incremental commits in your
