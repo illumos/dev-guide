@@ -675,6 +675,6 @@ Specific places to go include:
 
 - [Component Anatomy, Creating and Modifying Components](./anatomy.html)
 
-- [Debugging](./integrating.html)
+- [Debugging](./debugging.html)
 
 - [Getting Help](./help.html)
