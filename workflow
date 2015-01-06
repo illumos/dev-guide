@@ -379,6 +379,7 @@ $ cd uts
 $ vi common/sys/mac_client.h
 $ vi intel/sys/cpu.h
 $ dmake install_h
+$
 ```
 
 #### Kernel Components
