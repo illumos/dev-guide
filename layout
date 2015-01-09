@@ -81,7 +81,7 @@ contain or are otherwise self-explanatory.
 
   * `pkg`
 
-Contains the manifests and pacakge lists for building ips packages from the ON
+Contains the manifests and package lists for building ips packages from the ON
 sources.
 
   * `prototypes`
