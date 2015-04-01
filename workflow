@@ -96,10 +96,11 @@ see the nightly(1) manual page.
 
 #### Setting the path to our workspace
 
-Next, we need to make sure that `nightly` and other tools can find where our
-The variables that we want to modify are `GATE` and `CODEMGR_WS`. We're going to
-set `GATE` to the name of the directory that we're in and `CODEMGR_WS` to the
-path to it. So in our case the lines in `illumos.sh` will look like:
+Next, we need to make sure that `nightly` and other tools can find where to find
+our illumos workspace. The variables that we want to modify are `GATE` and
+`CODEMGR_WS`. We're going to set `GATE` to the name of the directory that we're
+in and `CODEMGR_WS` to the path to it. So in our case the lines in `illumos.sh`
+will look like:
 
 ```
 export GATE="illumos-gate"
@@ -127,9 +128,9 @@ export CW_NO_SHADOW=1
 
 ### Obtaining Closed Binaries
 
-While Sun made almost all of the operating open source, there are still a few
-closed components that the illumos community is replacing. You can obtain a copy
-of these closed binaries from a mirror provided by Joyent. You'll want to
+While Sun made almost all of the operating system open source, there are still a
+few closed components that the illumos community is replacing. You can obtain a
+copy of these closed binaries from a mirror provided by Joyent. You'll want to
 perform the following:
 
 ```
@@ -166,7 +167,7 @@ everything that happened. The other file is the `mail_msg`. This summarizes the
 different phases of the build, how long they took, and any warnings or noise
 encountered. It should be clean.
 
-If a build fails, the first stop for is usually the `nightly.log`. Every run of
+If a build fails, the first stop is usually the `nightly.log`. Every run of
 nightly leaves a log in its own directory based on the time stamp of the build.
 A given `nightly.log` may contain multiple errors. `nightly` tries as hard as
 possible to run to the end even if there is a build failure. Because of that,
