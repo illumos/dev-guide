@@ -155,13 +155,13 @@ $ pfiles $$
       O_RDWR|O_NDELAY FD_CLOEXEC
         SOCK_STREAM
         SO_SNDBUF(16384),SO_RCVBUF(5120)
-        sockname: AF_UNIX 
+        sockname: AF_UNIX
         peer: nginx[21289] zone: 855ac4dc-346f-4b68-8dc0-ccaace3dec6d[1]
    9: S_IFSOCK mode:0666 dev:542,0 ino:44397 uid:0 gid:0 rdev:0,0
       O_RDWR|O_NDELAY|0x1000 FD_CLOEXEC
         SOCK_STREAM
         SO_SNDBUF(16384),SO_RCVBUF(5120)
-        sockname: AF_UNIX 
+        sockname: AF_UNIX
         peer: nginx[21289] zone: 855ac4dc-346f-4b68-8dc0-ccaace3dec6d[1]
 $ pfexec gcore $(pgrep startd)
 gcore: core.5251 dumped
@@ -292,7 +292,7 @@ $ pstack $(pgrep vmadmd)
  082442d0 etp_proc (866a4f0, 0, 0, 0) + c4
  fe91474d _thrp_setup (fe671a40) + 88
  fe9148e0 _lwp_start (fe671a40, 0, 0, 0, 0, 0)
-$ pstack core.83049 
+$ pstack core.83049
 core 'core.83049' of 83049:     /bin/bash -c (cd openssl-1.0.1d-64strap; \     env - PATH=/home/rm/src
  fee95f95 waitid   (7, 0, 80473e0, 3)
  fee383b0 waitpid  (ffffffff, 80474bc, 0, 0, 2, 80474b0) + 75
@@ -707,7 +707,7 @@ run `dmake -m serial <target>`. In this case a code failure might look like:
 ```
 $ dmake -m serial install
 /home/rm/src/bardiche/projects/illumos/usr/src/tools/proto/root_i386-nd/opt/onbld/bin/i386/cw -_gcc -m64 -Ui386 -U__i386 -xO3 -_gcc=-fno-inline-small-functions  -_gcc=-fno-inline-functions-called-once ../../intel/amd64/ml/amd64.il -D_ASM_INLINES -Xa -xspace  -xmodel=kernel -_gcc=-mno-mmx -_gcc=-mno-sse -Wu,-save_args -v -xildoff  -g -xc99=%all -W0,-noglobal  -Wu,-save_args -xdebugformat=stabs -errtags=yes -errwarn=%all -_gcc=-Wno-address -_gcc=-Wno-missing-braces -_gcc=-Wno-sign-compare -_gcc=-Wno-unknown-pragmas -_gcc=-Wno-unused-parameter -_gcc=-Wno-missing-field-initializers -_gcc=-Wno-parentheses -_gcc=-Wno-unused-label -_gcc=-Wno-uninitialized -_gcc=-Wno-unused-function -_gcc=-fno-inline-small-functions  -_gcc=-fno-inline-functions-called-once  -_gcc=-fno-ipa-cp -W0,-xglobalstatic  -xstrconst -v -D_KERNEL -D_SYSCALL32 -D_SYSCALL32_IMPL -D_ELF64  -D_DDI_STRICT -Dsun -D__sun -D__SVR4 -DDEBUG    -I../../intel -I../../common/fs/zfs -I../../common/io/bpf -Y I,../../common  -c -o debug64/sdev_plugin.o ../../common/fs/dev/sdev_plugin.c
-+ /home/rm/src/bardiche/proto.strap/usr/bin/gcc -fident -finline -fno-inline-functions -fno-builtin -fno-asm -fdiagnostics-show-option -nodefaultlibs -D__sun -m64 -mtune=opteron -Ui386 -U__i386 -fno-strict-aliasing -fno-unit-at-a-time -fno-optimize-sibling-calls -O2 -fno-inline-small-functions -fno-inline-functions-called-once -D_ASM_INLINES -ffreestanding -mno-red-zone -mno-mmx -mno-sse -msave-args -Wall -Wextra -gdwarf-2 -std=gnu99 -msave-args -Werror -Wno-address -Wno-missing-braces -Wno-sign-compare -Wno-unknown-pragmas -Wno-unused-parameter -Wno-missing-field-initializers -Wno-parentheses -Wno-unused-label -Wno-uninitialized -Wno-unused-function -fno-inline-small-functions -fno-inline-functions-called-once -fno-ipa-cp -D_KERNEL -ffreestanding -D_SYSCALL32 -D_SYSCALL32_IMPL -D_ELF64 -D_DDI_STRICT -Dsun -D__sun -D__SVR4 -DDEBUG -I../../intel -I../../common/fs/zfs -I../../common/io/bpf -nostdinc -I../../common -c -o debug64/sdev_plugin.o ../../common/fs/dev/sdev_plugin.c -mcmodel=kernel 
++ /home/rm/src/bardiche/proto.strap/usr/bin/gcc -fident -finline -fno-inline-functions -fno-builtin -fno-asm -fdiagnostics-show-option -nodefaultlibs -D__sun -m64 -mtune=opteron -Ui386 -U__i386 -fno-strict-aliasing -fno-unit-at-a-time -fno-optimize-sibling-calls -O2 -fno-inline-small-functions -fno-inline-functions-called-once -D_ASM_INLINES -ffreestanding -mno-red-zone -mno-mmx -mno-sse -msave-args -Wall -Wextra -gdwarf-2 -std=gnu99 -msave-args -Werror -Wno-address -Wno-missing-braces -Wno-sign-compare -Wno-unknown-pragmas -Wno-unused-parameter -Wno-missing-field-initializers -Wno-parentheses -Wno-unused-label -Wno-uninitialized -Wno-unused-function -fno-inline-small-functions -fno-inline-functions-called-once -fno-ipa-cp -D_KERNEL -ffreestanding -D_SYSCALL32 -D_SYSCALL32_IMPL -D_ELF64 -D_DDI_STRICT -Dsun -D__sun -D__SVR4 -DDEBUG -I../../intel -I../../common/fs/zfs -I../../common/io/bpf -nostdinc -I../../common -c -o debug64/sdev_plugin.o ../../common/fs/dev/sdev_plugin.c -mcmodel=kernel
 ../../common/fs/dev/sdev_plugin.c: In function 'sdev_plugin_vop_readdir':
 ../../common/fs/dev/sdev_plugin.c:325: error: 'sp' undeclared (first use in this function)
 ../../common/fs/dev/sdev_plugin.c:325: error: (Each undeclared identifier is reported only once
@@ -744,7 +744,7 @@ build took, as well as sections on compiler warnings and errors, lint warnings
 and errors, and warnings and errors from the build's consistency checks. It will
 also show the differences from one build to the next so that way you can see
 what has changed from one build to the next. When you have a fully successful
-build, you should not see any warnings or errors show up in the file. 
+build, you should not see any warnings or errors show up in the file.
 
 When you do, there are a few things to look at. If it happens that the build
 itself failed due to a compiler error, you're likely to see a lot of noise in
@@ -913,20 +913,19 @@ following:
 $ mdb core.abort.54117
 Loading modules: [ libc.so.1 ld.so.1 ]
 > <eip::dis
-> <eip::dis
 libc.so.1`_lwp_kill:            call   +0x0     <libc.so.1`_lwp_kill+5>
 libc.so.1`_lwp_kill+5:          popl   %edx
 libc.so.1`_lwp_kill+6:          movl   $0xa3,%eax
 libc.so.1`_lwp_kill+0xb:        movl   %esp,%ecx
 libc.so.1`_lwp_kill+0xd:        addl   $0x10,%edx
-libc.so.1`_lwp_kill+0x13:       sysenter 
+libc.so.1`_lwp_kill+0x13:       sysenter
 libc.so.1`_lwp_kill+0x15:       jae    +0xc     <libc.so.1`_lwp_kill+0x23>
 libc.so.1`_lwp_kill+0x17:       cmpl   $0x5b,%eax
 libc.so.1`_lwp_kill+0x1a:       jne    +0x9     <libc.so.1`_lwp_kill+0x25>
 libc.so.1`_lwp_kill+0x1c:       movl   $0x4,%eax
 libc.so.1`_lwp_kill+0x21:       jmp    +0x2     <libc.so.1`_lwp_kill+0x25>
 libc.so.1`_lwp_kill+0x23:       xorl   %eax,%eax
-libc.so.1`_lwp_kill+0x25:       ret    
+libc.so.1`_lwp_kill+0x25:       ret
 >
 ```
 
@@ -937,12 +936,12 @@ general purpose registers of the thread you can run `$r`. This looks like:
 
 ```
 > $r
-%cs = 0x0043            %eax = 0x00000000 
-%ds = 0x004b            %ebx = 0xfef59000 
-%ss = 0x004b            %ecx = 0x08047b8c 
-%es = 0x004b            %edx = 0x00000000 
-%fs = 0x0000            %esi = 0x08047c10 
-%gs = 0x01c3            %edi = 0x08047ccc 
+%cs = 0x0043            %eax = 0x00000000
+%ds = 0x004b            %ebx = 0xfef59000
+%ss = 0x004b            %ecx = 0x08047b8c
+%es = 0x004b            %edx = 0x00000000
+%fs = 0x0000            %esi = 0x08047c10
+%gs = 0x01c3            %edi = 0x08047ccc
 
  %eip = 0xfeeeaa25 libc.so.1`_lwp_kill+0x15
  %ebp = 0x08047ba8
@@ -1028,7 +1027,6 @@ thing to do is to decompress it. You can do this by running:
 
 ```
 # cd /var/crash/volatile
-# savecore -vf vmdump.0 .
 # savecore -vf vmdump.0 .
 2014-10-17T19:26:09.989952+00:00 00-0c-29-37-80-28 savecore: [ID 570001 auth.error] reboot after panic: rw_exit: lock not held, lp=ffffff0248c6e0e8 wwwh=0 thread=ffffff025addc400
 savecore: System dump time: Thu Nov 28 15:52:16 2013
@@ -1120,7 +1118,7 @@ do the trick:
 # dtrace -wn 'tick-60s{ panic(); }'
 ```
 
-## What's Next? 
+## What's Next?
 
 This section is meant to serve as a basic introduction to debugging and is by no
 means exhaustive. If you encounter a bug that causes a program to crash and
