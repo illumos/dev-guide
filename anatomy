@@ -61,7 +61,7 @@ Makefile        cal.c
 $
 ```
 
-If you go ahead and build cal via `dmake` and bldenv(1) you'll see the
+If you go ahead and build cal via `dmake` and bldenv(1ONBLD) you'll see the
 program has been built and lands in the top level `cal` directory:
 
 ```
