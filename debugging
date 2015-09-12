@@ -738,8 +738,8 @@ build. Every compilation and program execution ends up in `nightly.log` and a
 large portion of the `mail_msg` is constructed from `nightly.log`.
 
 The `mail_msg`, on the other hand, is a high level summary of the build itself.
-The file is called the `mail_msg` as you can have `nightly(1)` send you a build
-summary via e-mail when it finishes. It contains the time each part of the
+The file is called the `mail_msg` as you can have `nightly(1ONBLD)` send you a
+build summary via e-mail when it finishes. It contains the time each part of the
 build took, as well as sections on compiler warnings and errors, lint warnings
 and errors, and warnings and errors from the build's consistency checks. It will
 also show the differences from one build to the next so that way you can see

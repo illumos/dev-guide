@@ -70,7 +70,7 @@ your illumos distribution on the best way to take care of getting this set up.
 
 ### Setting up illumos.sh
 
-The easiest way to do the full build is to run nightly(1). This takes care
+The easiest way to do the full build is to run nightly(1ONBLD). This takes care
 of building everything that you might care about and in the right order.
 `nightly` works off of a file that contains environment variables that describe
 how and what to build. A set up and highly commented copy of this file already
@@ -89,10 +89,10 @@ we'll ensure that we're set up to use the correct compiler.
 
 As you're looking at the environment file, you'll find that the first thing you
 encounter is the `NIGHTLY_OPTIONS` variable. This controls what's get built by
-`nightly`.  Sticking with the default settings will build all of the different
+`nightly`. Sticking with the default settings will build all of the different
 components for illumos in a debug-only build. If you need something else, for
 example a non-debug build for building a release or performance testing, please
-see the nightly(1) manual page.
+see the nightly(1ONBLD) manual page.
 
 #### Setting the path to our workspace
 
@@ -193,7 +193,7 @@ Note that if your build failed you will not generally see the file
 
 ## Your Best Friend while Building: bldenv
 
-bldenv(1) is a tool designed to get you into a development environment for
+bldenv(1ONBLD) is a tool designed to get you into a development environment for
 doing incremental build work. Once you've done your first `nightly` it's the
 only way to work. To get started, you use the same `nightly` environment file
 that we previously set up. Let's go ahead and use `bldenv`:
@@ -436,7 +436,7 @@ preferred.
 One of the easiest ways to test your changes is to boot a test system onto your
 new bits. No matter what kind of change you've made, this should work. There are
 various ways to do this based on your distribution; however, for most folks this
-can be achieved via the build tool onu(1). If you're inside of bldenv and
+can be achieved via the build tool onu(1ONBLD). If you're inside of bldenv and
 have finished your build, the simplest way to do this is:
 
 ```
@@ -487,12 +487,12 @@ the binary should be almost identical to the binary from the previous build.
 Another use is to verify that your change did not unintentionally affect
 another part of the codebase.
 
-illumos provides a tool that can verify this automatically: 
-[`wsdiff(1)`](http://illumos.org/man/1onbld/wsdiff). To run `wsdiff`, specify
-`-w` in your `NIGHTLY_OPTIONS`. For `wsdiff` to work, it needs to be run between
-two consecutive builds. Therefore, the common workflow is to first build the
-gate with `nightly`, make your changes, and then run `nightly` again, but this
-time with `wsdiff` enabled.
+illumos provides a tool that can verify this automatically:
+[`wsdiff(1ONBLD)`](http://illumos.org/man/1onbld/wsdiff). To run `wsdiff`,
+specify `-w` in your `NIGHTLY_OPTIONS`. For `wsdiff` to work, it needs to be run
+between two consecutive builds. Therefore, the common workflow is to first build
+the gate with `nightly`, make your changes, and then run `nightly` again, but
+this time with `wsdiff` enabled.
 
 `wsdiff` isn't perfect. There are a few things can cause noise to show up in its
 output. For example, the illumos `DEBUG` builds often carry macros like
@@ -562,7 +562,7 @@ need to go back and make the appropriate fixes.
 ### webrev
 
 There are lots of ways that you can share your changes with other people. The
-preferred format by the illumos community is that of the webrev(1). A
+preferred format by the illumos community is that of the webrev(1ONBLD). A
 `webrev` is a series of html pages that show the differences and changes in your
 code. `webrev` allows people to select various kinds of `diff` formats to use to
 look and review your changes. Unlike looking simply at a `diff` or `patch` file,
@@ -573,7 +573,7 @@ Creating a webrev is easy. All you need to do is make sure that you have your
 changes committed locally. It doesn't matter how many commits you have. By
 default, all of your uncommitted changes are compared to the head of the tree.
 The `webrev` tool has many options for comparing your changes against different
-revisions. See the `OPTIONS` section of webrev(1) if you need something
+revisions. See the `OPTIONS` section of webrev(1ONBLD) if you need something
 other than the default. Otherwise, you can generate a webrev simply by doing the
 following while in `bldenv`.
 
@@ -660,10 +660,10 @@ last stop.
 The last step is to run `git pbchk`. `git pbchk` runs several tests on the
 source base including checking the commit message, style, copyright checks and a
 few others. To see the full list see
-[`git-pbchk(1)`](http://illumos.org/man/1/git-pbchk). With one exception,
-copyright, you should fix all of the issues listed. Whether or not you choose to
-put a copyright message for your modified code is up to you (and whomever
-actually owns the copyright).
+[`git-pbchk(1ONBLD)`](http://illumos.org/man/1onbld/git-pbchk). With one
+exception, copyright, you should fix all of the issues listed. Whether or not
+you choose to put a copyright message for your modified code is up to you (and
+whomever actually owns the copyright).
 
 ## Victory
 
