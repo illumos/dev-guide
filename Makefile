@@ -13,7 +13,7 @@
 # Copyright 2014 (c) Joyent, Inc.  All rights reserved.
 #
 
-PTYHON =	python
+PYTHON =	python
 MDPATH =	./support
 MD = 		$(MDPATH)/markdown2.py
 TOC =		./support/gentoc.sh
