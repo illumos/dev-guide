@@ -42,11 +42,13 @@ IMAGE_FILES = \
 FILES = \
 	intro \
 	workflow \
+	guidelines \
 	layout \
 	anatomy \
 	debugging \
 	integrating \
 	help \
+	glossary \
 	license
 
 OUTDIR =	output
