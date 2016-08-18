@@ -8,16 +8,16 @@ and what to do if you find issues with this document.
 ## Additional Help with illumos
 
 If you have difficulty with building, are not sure what to do, or just have
-additional questsions, illumos has a broad community that is happy to help you
-out. There are a few different places that you can direct questions to:
+additional questsions, illumos has a friendly community that is happy to help
+you out. There are a few different places that you can direct questions:
 
   * Mailing Lists
-  * IRC
+  * Internet Relay Chat (IRC)
 
 ### illumos Mailing Lists
 
 illumos has several different mailing lists. When it comes to development, it
-has one catch all list and then several special interest lists. The general
+has one catchall list and several special interest lists. The general
 developer list is called 'developer'. There are currently three special interest
 lists that cover ZFS, DTrace, and Networking. If your question is related to
 development or use of one of those three technologies, then you should consider
@@ -31,14 +31,15 @@ development of illumos itself, then you should send mail to
 Generally speaking, you should avoid private mail asking for help. While a given
 individual may indeed know the most about your situation, they may not have as
 much time to address it as rapidly as you would like. Sending to the mailing
-list gives you access to as many people as possible who may be familiar. That
-said, if you are someone who is on that mailing list and you are not as familiar
-with a given issue, then do not feel compelled to reply. This helps us keep the
-signal to noise ratio healthy on the mailing lists.
+list gives you access to as many people as possible who may be familiar with
+your specific problem. That said, if you are someone who is on that mailing
+list and you are not as familiar with a given topic, then do not feel compelled
+to reply. This helps us keep the signal to noise ratio healthy on the mailing
+lists.
 
 If you want to raise some general discussion about the use of illumos that is
-not related to development activities, please send mail to the illumos discuss
-or a special interest list instead. The developer list is solely intended for
+not related to development activities, please send mail to the 'illumos-discuss'
+or a special interest list instead. The developer list is intended solely for
 development of illumos itself.
 
 If you have questions about how to do something in the context of a specific
@@ -48,25 +49,26 @@ day the members of the illumos community want to make sure that your problem
 gets addressed and will help redirect you to the appropriate place.
 
 For the full set of illumos lists, as well as, various distribution-specific
-lists, please see XXX[%d]. 
+lists, please see
+[The illumos wiki Mailing list page](http://wiki.illumos.org/display/illumos/illumos+Mailing+Lists). 
 
-### IRC
+### Internet Relay Chat (IRC)
 
 The illumos community maintains an active IRC channel in `#illumos` on
 `irc.freenode.net`. This room is used for general discussion, answering
-technical questions about illumos, and providing assistence with debugging and
-solving problems with illumos. Please leave yourself logged in for some time.
+technical questions about illumos, and providing assistance with debugging and
+illumos problem-solving. *Please leave yourself logged in for some time* --
 Questions are not always immediately answered, but folks do commonly look for
 unanswered questions and try to help.
 
-If you are having issues using a specific distribution, for example, how do you
-install a specific piece of software, you can get the most help by using a
+If you are having issues using a specific distribution (for example, "how do I
+install a specific piece of software?"), you can get the most help by using a
 distribution specific IRC channel which are generally also found on
 `irc.freenode.net`.
 
 ### Help Us Help You
 
-In either case, please remember that people can only help you if you provide
+In any case, please remember that people can only help you if you provide
 them enough information. If you have a program dumping core or the operating
 system is panicking, then please find some way to make that available. If you
 have questions about code that you have written consider making a webrev of your
