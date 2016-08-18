@@ -9,12 +9,21 @@ guide will help you in enhancing and fixing illumos.
 
 ## What is illumos?
 
-illumos is a consolidation of software that forms the core of an Operating
+illumos is a collection of software that forms the core of an Operating
 System. It includes the kernel, device drivers, core system libraries, and
-utilities. It is the home of many technologies include ZFS, DTrace, Zones, ctf,
+utilities. Conceptually, the illumos idea of "the operating system"
+lies between something like Linux (which is the kernel only; all of userspace
+is delivered by vendors in a "distribution") and the BSD family of operating
+systems, which are packaged as a complete unit (kernel, core libraries,
+userspace utilities, and even end-user software packages).
+
+illumos is the home of many technologies including ZFS, DTrace, Zones, ctf,
 FMA, and more. We pride ourselves on having a stable, highly observable, and
-technologically different system. In addition, illumos traces it roots back
-through Sun Microsystems to the original releases of `UNIX` and `BSD`.
+technologically different system. Finally, illumos has a proud engineering
+heritage, tracing it roots back through Sun Microsystems to the original
+releases of `UNIX` and `BSD`.
+
+
 
 ## Guide Layout
 
@@ -30,9 +39,9 @@ This guide is broken into the following sections:
 
   * illumos Guidelines and Principles
 
-  This section covers various core guidelines we have when working inside of
+  This section covers various core guidelines we have when working inside the 
   illumos gate. It also goes into detail about several of the guiding
-  engineering principles that have been guided this project from its time at Sun
+  engineering principles that have brought this project from its time at Sun
   through to today.
 
 
@@ -74,31 +83,47 @@ This guide is broken into the following sections:
   on working with illumos, this document, or anything else that might come up.
 
 
+  * Appendix: Glossary
+
+  This section provides a reference to acronyms and other terms that are
+  used in this guide, and either unique to illumos (and related operating
+  systems), or that may be unfamiliar to those who have not previously
+  done UNIX systems development.
+
   * Appendix: Documentation License
 
 ## Conventions
 
-The following describes the current typographical conventions in use in this
-document.
+The following section describes the current typographical conventions used
+in this document.
 
-When text begins as follows, it indicates that it's being run as a normal user
-shell:
+### Commands
+
+Fixed-width text beginning with a dollar sign indicates a shell command that
+should be run as a normal user:
 
 ```
 $
 ```
 
-When text begins as follows, it indicates that it is being run as a super-user's
-shell:
+Fixed-width text beginning with a hash mark indicates a shell command to be
+executed by the super-user's shell:
 
 ```
 #
 ```
 
-When text is formatted as `name(number)` that indicates that it is referring to
-the command with the name `name`, and in the section described by number. For
-example, read(2) refers to the read function in section 2 of the manual page,
-while ctf(4), would refer to the manual page on the CTF file format which is in
-section 4,  and finally connect(3SOCKET), refers to the connect function that's
-found in the `3SOCKET` section of the manual, which are functions that are a
-part of the library, `libsocket`.
+### Manual Pages
+
+When you see text formatted as `name(number)`, that indicates a reference to
+the command named `name` in section `number` of the manual. When they appear
+in this developer's guide, there should be a hyperlink to the appropriate
+manual page. For example, read(2) refers to the `read()` function
+in section 2 of the manual, while ctf(4) refers to the manual page on the CTF
+file format, which is section 4. Manual sections may have a sub-descriptor
+after the number: connect(3SOCKET) describes the `connect()` function that
+can be found in the `3SOCKET` section of the manual; this section describes
+functions that are a part of the `libsocket` library.
+
+See the subsection [Manual Pages](anatomy.html#manual-pages) in the Components
+section for more information about man pages, including the numbering scheme. 

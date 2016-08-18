@@ -1,0 +1,37 @@
+# Appendix: Glossary of Terms
+
+**CTF**
+Compact C Type Format. Assists in debugging. See
+[ctf(4)](http://illumos.org/man/4/ctf).
+
+**CW**
+Compiler wrapper. Historical version of illumos were built with Sun Studio
+(see below). In order to transition to the `gcc` compiler, the compiler
+wrapper was developed to translate compiler flags from Sun Studio syntax
+to GCC syntax.
+
+**FMA**
+Fault management architecture.
+
+**Gate; illumos gate**
+Gate is old Sun Microsystems terminology for a software source-code repository.
+
+**Lint; linting**
+Using the `lint` tool to check for common programming errors.
+
+**ON**
+OS/Net (Operating system/Network) consolidation. In historical version of SunOS,
+OS and Net were separate software components. Now this term refers to the
+operating system as a whole. 
+
+**RTI**
+Request to Integrate. The final approval process needed for a change to become
+part of the illumos gate. See [Integrating Changes](./integrating.html).
+
+**Sun Studio**
+A compiler suite historically required to build illumos. As of 2016, dependency
+on Sun Studio has been eliminated with the exception of the `lint` tool.
+
+**UTS**
+Unix Time Sharing. This is a historical name for UNIX, and lives on in the
+source tree as the `uts/` directory, which houses the kernel.
