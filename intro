@@ -55,7 +55,7 @@ This guide is broken into the following sections:
   * Component Anatomy, Creating and Modifying Components
 
   This sections covers working in specific components of the kernel. It first
-  covers the anatomy of different libraries, commands, and kernel modules, and
+  covers the anatomy of different libraries, commands, kernel modules, and
   device drivers. It then builds on top of this and discusses how to modify
   existing ones as well as how to create new ones. Makefiles, dealing with 3rd
   party source code, CTF data, and other issues that come up when building new
