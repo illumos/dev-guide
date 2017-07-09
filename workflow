@@ -107,7 +107,7 @@ export GATE="illumos-gate"
 
 ...
 
-export CODEMGR_WS="/ws/rm/$GATE"
+export CODEMGR_WS=$(git rev-parse --show-toplevel)
 ```
 
 #### Setting the Compiler
