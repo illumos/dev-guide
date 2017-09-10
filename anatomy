@@ -630,7 +630,7 @@ We can use that same exact makefile in the `sparc` directory. For `amd64` and
 `Makefile` looks like:
 
 ```
-$ cat i386/Makefile
+$ cat amd64/Makefile
 #
 # This file and its contents are supplied under the terms of the
 # Common Development and Distribution License ("CDDL"), version 1.0.
