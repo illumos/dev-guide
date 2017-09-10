@@ -338,7 +338,7 @@ and placed in dedicated ISA-specific subdirectories.
 
 Other commands' build systems place objects in the same directories as the
 sources. See [Component Anatomy, Creation, and
-Modification](./anatomy.htm#commands) for more information on how commands are
+Modification](./anatomy.html#commands) for more information on how commands are
 built.
 
 ### Exceptions in cmd and lib
@@ -612,7 +612,7 @@ the command layout. Unlike commands, most libraries are built for both 32- and
 present. Therefore, the overall build structure for each library is similar to
 that of the kernel. We'll give an overview of the general makefiles for
 libraries as well as briefly explain the makefiles for a specific library. Later
-on in [Component Anatomy, Creation, and Modification](./anatomy.htm#libraries)
+on in [Component Anatomy, Creation, and Modification](./anatomy.html#libraries)
 we'll go into more detail and show examples of building your own library and
 other components involved.
 
