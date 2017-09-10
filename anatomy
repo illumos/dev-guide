@@ -465,7 +465,7 @@ directories:
 ```
 $ cd usr/src/cmd/gethrtime
 $ dmake clobber # Clean up from last time
-$ mkdir i386 amd64 sparc sparv9
+$ mkdir i386 amd64 sparc sparcv9
 $
 ```
 
