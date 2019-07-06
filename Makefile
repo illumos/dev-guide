@@ -10,7 +10,7 @@
 #
 
 #
-# Copyright 2014 (c) Joyent, Inc.  All rights reserved.
+# Copyright 2019 Joyent, Inc.
 #
 
 PYTHON =	python
@@ -51,6 +51,12 @@ FILES = \
 	glossary \
 	license
 
+#
+# So that the bare "/books/dev" URL works, we nominate one of the top-level
+# pages to be the target of an "index.html" symlink:
+#
+INDEX_FILE =	intro
+
 OUTDIR =	output
 BOOTSTRAP_OUTDIRS = \
 	$(BOOTSTRAP_TYPES:%=$(OUTDIR)/bootstrap/%)
@@ -58,7 +64,8 @@ BOOTSTRAP_OUTDIRS = \
 OUTFILES = \
 	$(FILES:%=$(OUTDIR)/%.html) \
 	$(IMAGE_FILES:%=$(OUTDIR)/img/%) \
-	$(BOOTSTRAP_FILES:%=$(OUTDIR)/bootstrap/%)
+	$(BOOTSTRAP_FILES:%=$(OUTDIR)/bootstrap/%) \
+	$(OUTDIR)/index.html
 
 
 all: $(OUTDIR) $(BOOTSTRAP_OUTDIRS) $(OUTFILES)
@@ -71,6 +78,10 @@ $(OUTDIR)/img:
 
 $(BOOTSTRAP_OUTDIRS):
 	mkdir -p "$@"
+
+$(OUTDIR)/index.html:
+	rm -f "$@"
+	ln -s $(INDEX_FILE).html "$@"
 
 $(OUTDIR)/%.html: % $(HEADER) $(TRAILER) $(OUTDIR)
 	sed '/<!-- vim:[^:]*: -->/d' $(HEADER) > $@
