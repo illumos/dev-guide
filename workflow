@@ -231,6 +231,7 @@ tools. While in bldenv, it will already be in your path as a program called
 via:
 
 ```
+$ cd usr/src
 $ dmake cscope.out
 $ cscope-fast -dq
 ```
