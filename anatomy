@@ -1914,7 +1914,7 @@ responsible for putting into place. What we see here matches what we expect for
 the vast majority of kernel mdoules. Specifically that the `ALL_TARGET` needs to
 build the binary module as defined by `BINARY` and that it's responsible for
 making sure that the configuration file is there as well. If a module doesn't
-have a configuration file for some reason, then we would the `SRC_CONFFILE` line
+have a configuration file for some reason, then the `SRC_CONFFILE` line
 would be dropped. `LINT_TARGET` defines what we do for `dmake lint`, which is to
 run lint for this kernel module. Finally, the `INSTALL_TARGET` takes care of
 making sure that we actually install everything into the proto area. If there
@@ -1922,7 +1922,7 @@ was no configuration file for the driver, then the `ROOT_CONFFILE` would be left
 out.
 
 The build has default sets of flags for the compiler and link-editor. In the
-overrides section modules mad add additional values for `CPPFLAGS`,
+overrides section modules may add additional values for `CPPFLAGS`,
 pre-processor flags, `CFLAGS`, the C compiler flags, `LDFLAGS`, the flags
 for the link-editor, and `CERRWARN`, warnings that are potentially disabled for
 this module. Note that all of these definitions do a `+=`. It's important that
