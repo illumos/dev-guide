@@ -55,7 +55,7 @@ lists, please see
 ### Internet Relay Chat (IRC)
 
 The illumos community maintains an active IRC channel in `#illumos` on
-`irc.freenode.net`. This room is used for general discussion, answering
+`irc.libera.chat`. This room is used for general discussion, answering
 technical questions about illumos, and providing assistance with debugging and
 illumos problem-solving. *Please leave yourself logged in for some time* --
 Questions are not always immediately answered, but folks do commonly look for
@@ -64,7 +64,7 @@ unanswered questions and try to help.
 If you are having issues using a specific distribution (for example, "how do I
 install a specific piece of software?"), you can get the most help by using a
 distribution specific IRC channel which are generally also found on
-`irc.freenode.net`.
+`irc.libera.chat`.
 
 ### Help Us Help You
 
