@@ -112,19 +112,12 @@ export CODEMGR_WS=$(git rev-parse --show-toplevel)
 
 #### Setting the Compiler
 
-illumos supports building with two different compiler chains. The primary
-compiler is [gcc](http://gcc.gnu.org/) 4.4.4 and is the recommended compiler.
-illumos has historically built with very specific versions of the Sun Studio
-Compiler, but those are no longer publicly available. The build doesn't require
-studio, so this doesn't prove much of a problem. Add the following lines to
-`illumos.sh`.
-
-```
-# Default to compiling with gcc
-export __GNUC=""
-# Disable the shadow compiler which requires the correct version of Sun Studio
-export CW_NO_SHADOW=1
-```
+illumos uses [gcc](http://gcc.gnu.org/) as its primary compiler. gcc 7.3.0 is
+the primary compiler right now and gcc 10.3.0 is the shadow compiler. Building
+with both compilers is required. In addition, we leverage the tool smatch as
+another shadow compiler for catching lint errors. The default illumos
+environment file is configured to use gcc7 as the primary and 10 as the shadow.
+You may need to tweak their paths.
 
 ### Obtaining Closed Binaries
 
