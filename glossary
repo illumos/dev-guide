@@ -2,7 +2,7 @@
 
 **CTF**
 Compact C Type Format. Assists in debugging. See
-[ctf(4)](http://illumos.org/man/4/ctf).
+[ctf(5)](http://illumos.org/man/4/ctf).
 
 **CW**
 Compiler wrapper. Historical version of illumos were built with Sun Studio
