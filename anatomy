@@ -2332,24 +2332,24 @@ look under there, we'll see the following:
 
 ```
 $ ls -F usr/src/man
-Makefile        man3dat/        man3lgrp/       man3rpc/        man3xnet/
-Makefile.man    man3devid/      man3lib/        man3rsm/        man4/
-man1/           man3devinfo/    man3mail/       man3sasl/       man4d/
-man1b/          man3dlpi/       man3malloc/     man3scf/        man4fs/
-man1c/          man3dns_sd/     man3mp/         man3sec/        man4i/
-man1has/        man3elf/        man3mpapi/      man3secdb/      man4ipp/
-man1m/          man3exacct/     man3nsl/        man3sip/        man4m/
-man2/           man3ext/        man3nvpair/     man3slp/        man4p/
-man3/           man3fcoe/       man3pam/        man3socket/     man5/
-man3bsm/        man3fstyp/      man3papi/       man3stmf/       man7/
-man3c/          man3gen/        man3perl/       man3sysevent/   man9/
-man3c_db/       man3gss/        man3picl/       man3tecla/      man9e/
-man3cfgadm/     man3head/       man3picltree/   man3tnf/        man9f/
-man3commputil/  man3iscsit/     man3pool/       man3tsol/       man9p/
-man3contract/   man3kstat/      man3proc/       man3uuid/       man9s/
-man3cpc/        man3kvm/        man3project/    man3volmgt/
-man3curses/     man3ldap/       man3resolv/     man3xcurses/
-$
+Makefile        man3dat/        man3lib/        man3resolv/     man3xcurses/
+Makefile.man    man3devid/      man3m/          man3rpc/        man3xnet/
+man1/           man3devinfo/    man3mail/       man3rsm/        man4/
+man1b/          man3dlpi/       man3malloc/     man3sasl/       man4d/
+man1c/          man3dns_sd/     man3mp/         man3scf/        man4fs/
+man1has/        man3elf/        man3mpapi/      man3sec/        man4i/
+man1s/          man3exacct/     man3mvec/       man3secdb/      man4ipp/
+man2/           man3ext/        man3nsl/        man3sip/        man4m/
+man3/           man3fcoe/       man3nvpair/     man3slp/        man4p/
+man3avl/        man3fstyp/      man3ofmt/       man3socket/     man5/
+man3bsm/        man3gen/        man3pam/        man3stmf/       man7/
+man3c/          man3gss/        man3papi/       man3sysevent/   man8/
+man3c_db/       man3head/       man3perl/       man3tecla/      man9/
+man3cfgadm/     man3iscsit/     man3picl/       man3tnf/        man9e/
+man3commputil/  man3kstat/      man3picltree/   man3tsol/       man9f/
+man3contract/   man3kvm/        man3pool/       man3utempter/   man9p/
+man3cpc/        man3ldap/       man3proc/       man3uuid/       man9s/
+man3curses/     man3lgrp/       man3project/    man3volmgt/
 ```
 
 Each of these directories corresponds to a different section. Each section is
@@ -2358,16 +2358,17 @@ Section 1 covers commands. However, volume 1 covers normal user commands such as
 `ls`, while volume 1m covers administrative commands such as `reboot`. The use
 of volumes is different from many other systems out there, we use this in
 illumos because it allows for better organization. The following table provides
-an overview of the purpose of the sections:
+an overview of the purpose of the sections (note, sections are often broken down
+into specific chapters indicated by a suffix):
 
 || Section || Purpose ||
 || 1 || Commands ||
 || 2 || System Calls ||
 || 3 || C Functions and Libraries ||
 || 4 || Special Files ||
-|| 5 || File formats ||
-|| 7 || Miscellany, including Standards, Macros, Environments, etc. ||
-|| 8 || Operator Commands ||
+|| 5 || File formats and Configurations ||
+|| 7 || Standards, Environments, and Macros ||
+|| 8 || Maintenance Commands ||
 || 9 || Device Driver Interfaces ||
 
 Each section starts with a manual called `Intro` which introduces the section
