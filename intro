@@ -68,7 +68,7 @@ This guide is broken into the following sections:
   systems panicking. Don't panic! This section introduces you to tools and
   techniques for investigating such problems and help you along the road to root
   causing such issues. It also briefly discusses how to control the generation
-  of such dumps as well as introducing system tools like mdb(1) and dtrace(1m).
+  of such dumps as well as introducing system tools like mdb(1) and dtrace(8).
 
 
   * Integrating Changes
@@ -119,7 +119,7 @@ When you see text formatted as `name(number)`, that indicates a reference to
 the command named `name` in section `number` of the manual. When they appear
 in this developer's guide, there should be a hyperlink to the appropriate
 manual page. For example, read(2) refers to the `read()` function
-in section 2 of the manual, while ctf(4) refers to the manual page on the CTF
+in section 2 of the manual, while ctf(5) refers to the manual page on the CTF
 file format, which is section 4. Manual sections may have a sub-descriptor
 after the number: connect(3SOCKET) describes the `connect()` function that
 can be found in the `3SOCKET` section of the manual; this section describes

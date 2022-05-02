@@ -18,7 +18,7 @@ its own place and usefulness.
 
 The first set of tools worth talking about are what we call the `ptools` which
 are documented in `proc(1)`. These tools use `libproc` and the `/proc` file
-system (`proc(4)`) to gather information about them.  Several of these commands
+system (`proc(5)`) to gather information about them.  Several of these commands
 like `pflags`, `pstop`, and `pstack` can operate on a single thread instead of
 or in addition to the rest of the process. These tools can also be used to
 report information from user land process core dumps as well. This allows you to

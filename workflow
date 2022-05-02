@@ -253,7 +253,7 @@ function. The build system might not even have that header or library installed!
 Furthermore, there are occasionally libraries and headers that are used to help
 build the system, but are not actually shipped. For example, `libpcidb.so.1`
 does not have a compilation symlink delivered to systems, but it does have one
-in the proto area to allow commands like `prtconf(1M)` to link against it.
+in the proto area to allow commands like `prtconf(8)` to link against it.
 
 ### What do I Modify?
 
@@ -382,7 +382,7 @@ $
 Unlike libraries and commands, the build information for these components is
 kept in a different directory from the source. The majority of the kernel is in
 `uts/common/`, while the minority is in architecture and platform specific
-directories. Take for example, the driver igb(7D). The source for it lives
+directories. Take for example, the driver igb(4D). The source for it lives
 in `uts/common/io/igb/`. However, to build it you need to be in the architecture
 specific directory, either `intel` or `sparc` currently. Once in there, you can
 go ahead and use the same `dmake install` techniques that we've been using

@@ -52,7 +52,7 @@ IP port definitions and name service switch configuration files installed into
 
   * `cmd/ptools`
 
-Utilities for manipulating and observing processes; these are based on proc(4)
+Utilities for manipulating and observing processes; these are based on proc(5)
 and libproc interfaces.
 
   * `cmd/sgs`
@@ -131,7 +131,7 @@ System configuration parameters.
 
   * `uts/common/contract`
 
-Code to support process contracts. See `contract(4)` and `libcontract(3LIB)` for
+Code to support process contracts. See `contract(5)` and `libcontract(3LIB)` for
 more information on process contracts.
 
   * `uts/common/cpr`
@@ -140,7 +140,7 @@ CheckPoint-and-Resume support. This implements suspend and resume functionality.
 
   * `uts/common/crypto`
 
-Kernel cryptographic framework. See `cryptoadm(1M)` for more information.
+Kernel cryptographic framework. See `cryptoadm(8)` for more information.
 
   * `uts/common/ctf`
 
@@ -156,7 +156,7 @@ Dispatcher, thread handling, and scheduling classes.
 
   * `uts/common/dtrace`
 
-CPU-independent `dtrace(7D)` kernel support.
+CPU-independent `dtrace(4D)` kernel support.
 
   * `uts/common/exec`
 

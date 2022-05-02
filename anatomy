@@ -9,13 +9,13 @@ that you are interested in.
 
 Commands comprise the components of the system that the user is most familiar
 with. These include all of the traditional Unix shell commands such as ls(1) and
-grep(1), management tools like vmstat(1) and ifconfig(1M), and illumos specific
-tools like zfs(1M), dtrace(1M), and prstat(1M).
+grep(1), management tools like vmstat(1) and ifconfig(8), and illumos specific
+tools like zfs(8), dtrace(8), and prstat(8).
 
 Each directory in `usr/src/cmd` contains both the source code and Makefiles to
 generate one or more programs which end up installed in various locations in the
 proto area, the two most common locations for commands are `/usr/bin` and
-`/usr/sbin`. In addition, userland daemons, such as dlmgmtd(1M) and smbd(1M),
+`/usr/sbin`. In addition, userland daemons, such as dlmgmtd(8) and smbd(8),
 are also found under `usr/src/cmd`. SMF manifests for services that run these
 daemons are found inside of the source directories for a command.
 
@@ -32,7 +32,7 @@ instead.
 
 Some commands have code which varies based on whether the program is running on
 an x86 or SPARC processor. They may contain plugins which only target x86. For
-example, devfsadm(1M) needs to builds an x86 specific plugin for devices which
+example, devfsadm(8) needs to builds an x86 specific plugin for devices which
 do not occur on SPARC systems.
 
 There are a third set of commands which need to execute a version depending on
@@ -41,7 +41,7 @@ of commands that fall into this bucket are ps(1) and mdb(1). To help
 make this invisible to the user, illumos uses a command called `isaexec` which
 is based on the isaexec(3C) library call. Programs that need this behavior
 hardlink themselves to isaexec and place architecture specific copies of them
-into the architecture specific directories. Take dtrace(1M) as an example. A
+into the architecture specific directories. Take dtrace(8) as an example. A
 32-bit i386 copy of the program is located in `/usr/sbin/i86/dtrace` and the
 64-bit version in `/usr/sbin/amd64/dtrace`. When a user runs `/usr/sbin/dtrace`,
 `isaexec` makes sure that the appropriate version for the architecture is run.
@@ -123,7 +123,7 @@ one target. Generally, though, you'll want to stick to the top level.
 
 Building up from our previous examples, the next thing that it makes sense to
 look at is something with multiple source files. A good example of this is
-prstat(1M). The main difference between commands with just a single source
+prstat(8). The main difference between commands with just a single source
 file and ones with multiple are the differences in the Makefiles. We'll go into
 more detail with that a bit latter on as we demonstrate how to create something
 that fits these different models. If you look at the top level directory for
@@ -831,7 +831,7 @@ then existing rule would take you the rest of the way.
 #### CTF Support
 
 Having `CTF` data in programs is essential for debugging run away commands. For
-more on `CTF`, please see ctf(4). While every kernel module and a majority of
+more on `CTF`, please see ctf(5). While every kernel module and a majority of
 libraries in the system have CTF data, the same is not true for commands. Adding
 CTF itself, is really quite easy though. We need to once again edit
 `Makefile.com`. The `cmd` makefiles already have on that adds in all the hooks
@@ -921,7 +921,7 @@ Libraries generally fall into two different categories, public libraries and
 private libraries. Public libraries are the common programming interfaces that
 everyone expects. These libraries are what implement the standard C library
 calls such as 'open(2)' and 'strlen(3C)'.  There are also libraries which are
-just used to implement system commands. For example, something like `dladm(1M)`
+just used to implement system commands. For example, something like `dladm(8)`
 uses the library `libdladm.so.1` to help implement some of its functionality.
 
 Libraries are always built and designed to support both 32-bit and 64-bit
@@ -1043,7 +1043,7 @@ ISA-independent makefile. The ISA-dependent makefiles which are found in
 directories like `i386` and `sparcv9` and the makefile that is common to the
 ISA-dependent files, `Makefile.com`. Let's walk through each of these. For this
 example we'll use `libpcidb` which is a library that provides an interface to
-the PCI database library for use by programs like `prtconf(1M)`.
+the PCI database library for use by programs like `prtconf(8)`.
 
 #### Top level Library Makefile
 
@@ -1764,7 +1764,7 @@ stable set of interfaces, this simplifies the act of writing a device driver.
 Unlike commands and libraries, where the code and the makefiles that drive them
 live in the same location, this is not true for kernel modules. Consider, for
 example, the `vnic` driver. This driver provides the functionality for creating
-virtual network interfaces per dladm(1M). The source code for the driver lives
+virtual network interfaces per dladm(8). The source code for the driver lives
 in `uts/common/io/vnic`. Let's take a look at what's there:
 
 ```
@@ -2332,24 +2332,24 @@ look under there, we'll see the following:
 
 ```
 $ ls -F usr/src/man
-Makefile        man3dat/        man3lgrp/       man3rpc/        man3xnet/
-Makefile.man    man3devid/      man3lib/        man3rsm/        man4/
-man1/           man3devinfo/    man3mail/       man3sasl/       man5/
-man1b/          man3dlpi/       man3malloc/     man3scf/        man7/
-man1c/          man3dns_sd/     man3mp/         man3sec/        man7d/
-man1has/        man3elf/        man3mpapi/      man3secdb/      man7fs/
-man1m/          man3exacct/     man3nsl/        man3sip/        man7i/
-man2/           man3ext/        man3nvpair/     man3slp/        man7ipp/
-man3/           man3fcoe/       man3pam/        man3socket/     man7m/
-man3bsm/        man3fstyp/      man3papi/       man3stmf/       man7p/
-man3c/          man3gen/        man3perl/       man3sysevent/   man9/
-man3c_db/       man3gss/        man3picl/       man3tecla/      man9e/
-man3cfgadm/     man3head/       man3picltree/   man3tnf/        man9f/
-man3commputil/  man3iscsit/     man3pool/       man3tsol/       man9p/
-man3contract/   man3kstat/      man3proc/       man3uuid/       man9s/
-man3cpc/        man3kvm/        man3project/    man3volmgt/
-man3curses/     man3ldap/       man3resolv/     man3xcurses/
-$
+Makefile        man3dat/        man3lib/        man3resolv/     man3xcurses/
+Makefile.man    man3devid/      man3m/          man3rpc/        man3xnet/
+man1/           man3devinfo/    man3mail/       man3rsm/        man4/
+man1b/          man3dlpi/       man3malloc/     man3sasl/       man4d/
+man1c/          man3dns_sd/     man3mp/         man3scf/        man4fs/
+man1has/        man3elf/        man3mpapi/      man3sec/        man4i/
+man1s/          man3exacct/     man3mvec/       man3secdb/      man4ipp/
+man2/           man3ext/        man3nsl/        man3sip/        man4m/
+man3/           man3fcoe/       man3nvpair/     man3slp/        man4p/
+man3avl/        man3fstyp/      man3ofmt/       man3socket/     man5/
+man3bsm/        man3gen/        man3pam/        man3stmf/       man7/
+man3c/          man3gss/        man3papi/       man3sysevent/   man8/
+man3c_db/       man3head/       man3perl/       man3tecla/      man9/
+man3cfgadm/     man3iscsit/     man3picl/       man3tnf/        man9e/
+man3commputil/  man3kstat/      man3picltree/   man3tsol/       man9f/
+man3contract/   man3kvm/        man3pool/       man3utempter/   man9p/
+man3cpc/        man3ldap/       man3proc/       man3uuid/       man9s/
+man3curses/     man3lgrp/       man3project/    man3volmgt/
 ```
 
 Each of these directories corresponds to a different section. Each section is
@@ -2358,15 +2358,17 @@ Section 1 covers commands. However, volume 1 covers normal user commands such as
 `ls`, while volume 1m covers administrative commands such as `reboot`. The use
 of volumes is different from many other systems out there, we use this in
 illumos because it allows for better organization. The following table provides
-an overview of the purpose of the sections:
+an overview of the purpose of the sections (note, sections are often broken down
+into specific chapters indicated by a suffix):
 
 || Section || Purpose ||
 || 1 || Commands ||
 || 2 || System Calls ||
 || 3 || C Functions and Libraries ||
-|| 4 || File formats ||
-|| 5 || Miscellany, including Standards, Macros, Environments, etc. ||
-|| 7 || Special Files ||
+|| 4 || Special Files ||
+|| 5 || File formats and Configurations ||
+|| 7 || Standards, Environments, and Macros ||
+|| 8 || Maintenance Commands ||
 || 9 || Device Driver Interfaces ||
 
 Each section starts with a manual called `Intro` which introduces the section
@@ -2376,6 +2378,14 @@ introduction to section 2, you would use, `man Intro.2`. To get the page for the
 C function `strlen`, you could use `man strlen.3c`. Generally references to
 manual pages are written like `open(2)` or `accept(3SOCKET)`. This entry in
 parenthesis tells you the section, and optionally the volume.
+
+#### Getting Started
+
+To get started with a manual page, there are prototype files in
+`usr/src/prototypes` that correspond to various sections. They include all of
+the different parts of the manual page that are required. In general, these
+should always serve as your starting point. You'll find a more involved
+discussion of this next.
 
 #### What Makes a Good Manual Page?
 
@@ -2388,7 +2398,7 @@ have any questions on how to use the subject of the manual page, and if they do,
 it's answered by another manual page or document they've been pointed to.
 
 There's a lot of different kinds of content that this covers. illumos has a
-manual page that describe this and some of the basic macros in man(5). Every
+manual page that describe this and some of the basic macros in mdoc(7). Every
 manual page starts off with the following four entries:
 
 - Title
@@ -2431,9 +2441,11 @@ the same set of issues. Notably manual pages should include information on:
 - Return values and exit codes
 - Errors that may be returned and their meaning
 - Provide examples
-- Involved Files
+- Involved files
+- The interface stability
+- The Multi-threaded safety (for functions)
+- Supported platforms/architectures
 - Related manual pages
-- Attributes
 
 If a command has any options, then each option should be described in detail in
 the section called 'OPTIONS'. Generally, a small synopsis of each option and
@@ -2498,7 +2510,7 @@ form. In general, only functions that are considered stable are documented.
 The second attribute is specific to functions. The attribute is often called the
 MT-Level. This describes how it will perform in a multi-threaded environment and
 if they are allowed in signal handlers. The full list of the various MT-level
-attributes is in attributes(5). They vary between things which are unsafe at any
+attributes is in attributes(7). They vary between things which are unsafe at any
 speed in a multi-threaded program to functions which can be safely used in
 various environments. One of the strengths of illumos' manual pages is that they
 describe this kind of information, which might otherwise be lost to the
