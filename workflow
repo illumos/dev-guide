@@ -553,34 +553,24 @@ The easiest way to do check all of this is to simply run `nightly` again and
 look at the contents of the `mail_msg`. If you see errors from there, you will
 need to go back and make the appropriate fixes.
 
-### webrev
+### Gerrit
 
-There are lots of ways that you can share your changes with other people. The
-preferred format by the illumos community is that of the webrev(1ONBLD). A
-`webrev` is a series of html pages that show the differences and changes in your
-code. `webrev` allows people to select various kinds of `diff` formats to use to
-look and review your changes. Unlike looking simply at a `diff` or `patch` file,
-a `webrev` breaks down the changes on a per-file basis and allows for the reader
-to get much more context than normally is possible.
-
-Creating a webrev is easy. All you need to do is make sure that you have your
-changes committed locally. It doesn't matter how many commits you have. By
-default, all of your uncommitted changes are compared to the head of the tree.
-The `webrev` tool has many options for comparing your changes against different
-revisions. See the `OPTIONS` section of webrev(1ONBLD) if you need something
-other than the default. Otherwise, you can generate a webrev simply by doing the
-following while in `bldenv`.
+Code review for illumos is conducted in [Gerrit](http://code.illumos.org),
+it's own
+[documentation](https://code.illumos.org/Documentation/user-upload.html)
+provides complete details.  Briefly, you will push your code to a specially
+named branch, which will create the review.  Authentication is via your
+illumos ssh key in redmine.
 
 ```
-$ webrev
-$ find /ws/rm/illumos-gate/webrev
-$
+git push ssh://your-username@code.illumos.org/illumos-gate your-branch:refs/for/master
 ```
 
-You'll want to share your webrev with your reviewers. If you don't have a place
-to upload it or share with them, the illumos community provides some common
-places for that which is `cr.illumos.org`. See XXX for more information on
-using `cr.illumos.org`.
+Will create a review for _your-branch_, and output its URL.
+Each commit in your branch will be a separate review, though each will be
+grouped together, and each needs a `Change-Id` line, as described in the
+Gerrit documentation (the error message should you not do this will tell you
+how to enable a hook to create them automatically, should you want to). 
 
 ### Reviewers
 

@@ -67,12 +67,7 @@ submitting your RTI. Furthermore, if there are issues or disagreements about
 things between you and your reviewers, that is something that you need to tell
 the advocates.
 
-When providing materials for review, the best form of this is a `webrev`. For
-information on generating it, please read [the workflow section on
-webrev](./workflow.html#webrev). If you have written custom testing software,
-you should make that available. This will not only help reviewers better
-understand how your changes work, but they will also be able to provide feedback
-on the testing and may be able to find cracks in the test plan.
+Code reviews are conducted using [gerrit](https://code.illumos.org).
 
 #### Finding Reviewers
 
@@ -149,9 +144,6 @@ which checks everything that is in the proto area.
 
 The advocates are going to apply your changes to the gate. As we are using
 `git`, the best way to do this is by attaching the output of `git format-patch`.
-While `webrev` generates a patch, it isn't always the most useful, as it leads
-to people trying to manually add missing files which can be an error prone
-process.
 
 If isn't required for you to have merged your changes into the head of the tree,
 but if your advocate is doing so and runs into substantial trouble with that,
