@@ -17,7 +17,7 @@ Fault management architecture.
 Gate is old Sun Microsystems terminology for a software source-code repository.
 
 **Lint; linting**
-Using the `lint` tool to check for common programming errors.
+Using the `smatch` tool to check for common programming errors.
 
 **ON**
 OS/Net (Operating system/Network) consolidation. In historical version of SunOS,
@@ -30,7 +30,8 @@ part of the illumos gate. See [Integrating Changes](./integrating.html).
 
 **Sun Studio**
 A compiler suite historically required to build illumos. As of 2016, dependency
-on Sun Studio has been eliminated with the exception of the `lint` tool.
+on Sun Studio has been eliminated and the use of its old `lint` tool was
+replaced with smatch.
 
 **UTS**
 Unix Time Sharing. This is a historical name for UNIX, and lives on in the

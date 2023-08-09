@@ -378,13 +378,6 @@ subdirectory. It is aware of the specific targets that need to be built in each
 subdirectory in order to perform a complete build, and itself knows how to
 create a skeleton proto area for later use by `install` and `install_h` targets.
 
-  * `usr/src/Makefile.lint`
-
-All linting from the top level is driven by this makefile. It contains long
-lists of directories known to be lint-clean and contains simple recursive rules
-for rebuilding each subdirectory's lint target.  The actual linting is driven by
-the lower-level makefiles.
-
   * `usr/src/Makefile.master`
 
   * `usr/src/Makefile.master.64`

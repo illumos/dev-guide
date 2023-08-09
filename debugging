@@ -694,7 +694,7 @@ Note Section:  .note(phdr)
 
 While developing and working on illumos, the build may fail for a number of
 reasons. It could be because of a typo in the code or you've hit an issue with a
-change due to lint or packaging.
+change due to smatch or packaging.
 
 If you're running something inside of `bldenv` you will see the exact line that
 failed as well as the command that caused it. When compiling a piece of C code,
