@@ -71,8 +71,9 @@ distribution specific IRC channel which are generally also found on
 In any case, please remember that people can only help you if you provide
 them enough information. If you have a program dumping core or the operating
 system is panicking, then please find some way to make that available. If you
-have questions about code that you have written consider making a webrev of your
-changes available. 
+have questions about code that you have written consider making your
+changes available on a git branch or with
+[gerrit](https://illumos.org/docs/contributing/gerrit/).
 
 If you are hitting a bug that you do not understand in the compiler, then please
 include the full compilation line. In some build systems you may be required to

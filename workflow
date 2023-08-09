@@ -7,148 +7,9 @@ experience building programs written in the C programming language. It will take
 you from obtaining a copy of the illumos source tree all the way through to
 getting it ready for putback.
 
-
-## Obtaining the source
-
-illumos uses [git](http://git-scm.com/) for its source control management. The
-simplest way to obtain the illumos source is to clone the git tree. You should
-first make sure that git is installed. You can do this with the following
-command:
-
-```
-$ which git
-/usr/bin/git
-```
-
-The location of git may be different, but if it says git is not there, you
-should consult your distribution's documentation for installing packages.
-
-illumos can be built inside of a zone or in the global zone. It can also be
-built as a user or as the super user. In most environments you will be doing
-your work as a normal user. The rest of this guide will assume you are a normal
-user. There should be no change if you are building as the super user.
-
-The primary git repository is on
-[github](http://github.com/illumos/illumos-gate) under the illumos organization.
-To get started you should pick a file system location to do your work. Once
-there, you can use git to obtain a copy of the source tree:
-
-```
-$ whoami
-rm
-$ cd /ws/rm
-$ git clone git://github.com/illumos/illumos-gate.git
-Cloning into illumos-gate...
-remote: Counting objects: 331190, done.
-remote: Compressing objects: 100% (73583/73583), done.
-remote: Total 331190 (delta 238180), reused 322706 (delta 232512)
-Receiving objects: 100% (331190/331190), 211.34 MiB | 1.32 MiB/s, done.
-Resolving deltas: 100% (238180/238180), done.
-$ cd illumos-gate
-$ ls
-README          exception_lists usr
-```
-
-Obtaining a copy of the illumos source tree may take several minutes depending
-on the speed of your network connection. Feel free to place your workspace
-wherever you want on the file system. The rest of this guide will assume it is
-`/ws/rm/illumos-gate`. Once you've verified that you have it, we can prepare to
-build the gate.
-
-
-## Preparing to Build
-
-While you may only want to work on a single component of illumos, the simplest
-way to do that is to do a full build of the stock gate and then start making
-your changes. This makes it so you don't have to worry as much about what your
-component depends on.
-
-You'll want to make sure that you have all the build dependencies necessary
-already installed. Distributions have different ways of getting these packages.
-Each distribution has their own way of getting this set up. You should consult
-your illumos distribution on the best way to take care of getting this set up.
-
-### Setting up illumos.sh
-
-The easiest way to do the full build is to run nightly(1ONBLD). This takes care
-of building everything that you might care about and in the right order.
-`nightly` works off of a file that contains environment variables that describe
-how and what to build. A set up and highly commented copy of this file already
-exists for you to use. To get started we're going to copy the stock environment
-variable, modify it ever so slightly, and then do the build.
-
-```
-$ cd /ws/rm/illumos-gate
-$ cp /opt/onbld/env/illumos illumos.sh
-$ vi illumos.sh
-```
-
-To get going there are a few important changes that you have to make this file,
-specifically to tell `nightly` where your workspace is located. Following that,
-we'll ensure that we're set up to use the correct compiler.
-
-As you're looking at the environment file, you'll find that the first thing you
-encounter is the `NIGHTLY_OPTIONS` variable. This controls what's get built by
-`nightly`. Sticking with the default settings will build all of the different
-components for illumos in a debug-only build. If you need something else, for
-example a non-debug build for building a release or performance testing, please
-see the nightly(1ONBLD) manual page.
-
-#### Setting the path to our workspace
-
-Next, we need to make sure that `nightly` and other tools can find where to find
-our illumos workspace. The variables that we want to modify are `GATE` and
-`CODEMGR_WS`. We're going to set `GATE` to the name of the directory that we're
-in and `CODEMGR_WS` to the path to it. So in our case the lines in `illumos.sh`
-will look like:
-
-```
-export GATE="illumos-gate"
-
-...
-
-export CODEMGR_WS=$(git rev-parse --show-toplevel)
-```
-
-#### Setting the Compiler
-
-illumos uses [gcc](http://gcc.gnu.org/) as its primary compiler. gcc 7.3.0 is
-the primary compiler right now and gcc 10.3.0 is the shadow compiler. Building
-with both compilers is required. In addition, we leverage the tool smatch as
-another shadow compiler for catching lint errors. The default illumos
-environment file is configured to use gcc7 as the primary and 10 as the shadow.
-You may need to tweak their paths.
-
-### Obtaining Closed Binaries
-
-While Sun made almost all of the operating system open source, there are still a
-few closed components that the illumos community is replacing. You can obtain a
-copy of these closed binaries from a mirror provided by Joyent. You'll want to
-perform the following:
-
-```
-$ cd /ws/rm/illumos-gate
-$ curl -O https://download.joyent.com/pub/build/illumos/on-closed-bins.i386.tar.bz2
-$ curl -O https://download.joyent.com/pub/build/illumos/on-closed-bins-nd.i386.tar.bz2
-$ tar xjvpf on-closed-bins.i386.tar.bz2
-$ tar xjvpf on-closed-bins-nd.i386.tar.bz2
-```
-
-## Build illumos
-
-Now we can go ahead and build illumos. I suggest that you do the build inside of
-a screen session or nohup, making it easier to run your build unattended.
-
-```
-$ cd /ws/rm/illumos-gate
-$ /opt/onbld/bin/nightly ./illumos.sh
-$ echo $?
-0
-```
-
-The amount of time that it takes `nightly` to complete varies. It can take
-anywhere from forty minutes at the low end to several hours. The more CPUs
-available to the build, the faster it will go.
+To set up and initialize the build, see the [Building illumos
+instructions](https://illumos.org/docs/developers/build/) that are part of the
+normal docs.
 
 ## Diagnosing Build Failures
 
@@ -535,52 +396,28 @@ changes down into one commit and have the chance to fix that up.
 You've built your changes, made some local commits, and tested them. The hard
 part is done! Before you can get the change integrated there are a few steps
 that need to be done. These steps insure that the gate has consistent style and
-catches a common errors.
+helps with review.
 
-### Lint and make check
-
-In addition to compiler warnings, illumos-gate uses a tool called `lint` which
-checks for various programming errors. Historically, compilers did not always
-issue warnings about various constructs and issues which led to programmer
-error. Because of that, the tool `lint` was adapted from the `pcc` compiler.
-Today, the `lint` that illumos-gate uses comes from the Sun Studio Compiler
-Collection.
-
-In addition to the `lint` checks, there is a Makefile target called `make check`
-that validates aspects of header files and style.
-
-The easiest way to do check all of this is to simply run `nightly` again and
-look at the contents of the `mail_msg`. If you see errors from there, you will
-need to go back and make the appropriate fixes.
-
-### webrev
+### Gerrit
 
 There are lots of ways that you can share your changes with other people. The
-preferred format by the illumos community is that of the webrev(1ONBLD). A
-`webrev` is a series of html pages that show the differences and changes in your
-code. `webrev` allows people to select various kinds of `diff` formats to use to
-look and review your changes. Unlike looking simply at a `diff` or `patch` file,
-a `webrev` breaks down the changes on a per-file basis and allows for the reader
-to get much more context than normally is possible.
-
-Creating a webrev is easy. All you need to do is make sure that you have your
-changes committed locally. It doesn't matter how many commits you have. By
-default, all of your uncommitted changes are compared to the head of the tree.
-The `webrev` tool has many options for comparing your changes against different
-revisions. See the `OPTIONS` section of webrev(1ONBLD) if you need something
-other than the default. Otherwise, you can generate a webrev simply by doing the
-following while in `bldenv`.
+preferred format by the illumos community is using the online tool gerrit at
+[code.illumos.org](https://code.illumos.org/).  This tool allows folks to
+provide comments and makes it easy to see what changes between releases. For
+more information on getting started with gerrit see [Code Review with
+Gerrit](https://illumos.org/docs/contributing/gerrit/). It will use your ssh key
+that is in the bug tracker for authentication. Briefly, you will push your code
+to a specially named branch, which will create the review.
 
 ```
-$ webrev
-$ find /ws/rm/illumos-gate/webrev
-$
+git push ssh://your-username@code.illumos.org/illumos-gate your-branch:refs/for/master
 ```
 
-You'll want to share your webrev with your reviewers. If you don't have a place
-to upload it or share with them, the illumos community provides some common
-places for that which is `cr.illumos.org`. See XXX for more information on
-using `cr.illumos.org`.
+Will create a review for _your-branch_, and output its URL. Each commit in your
+branch will be a separate review, though each will be grouped together, and each
+needs a `Change-Id` line, as described in the Gerrit documentation (the error
+message should you not do this will tell you how to enable a hook to create them
+automatically, should you want to). 
 
 ### Reviewers
 

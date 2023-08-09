@@ -375,8 +375,6 @@ install: all $(ROOTPROG)
 
 clean:
 
-lint: lint_PROG
-
 include ../Makefile.targ
 ```
 
@@ -401,11 +399,6 @@ that `clean` only gets rid of intermediate files such as object files, where as
 `clobber` does everything that `clean` does and ensures that we also remove all
 of the generated programs. Because we have just one C file here, we can go
 directly to and from the generated binary without intermediary files.
-
-The last target we have is `lint`. It's reason for existence is to run `lint` on
-our program and describing how that works for us. In this case, we can simply
-use the `lint_PROG` target to take care of doing all of this for us. That is
-defined in Makefile.targ to run lint on our program for us.
 
 Now, we can go ahead and build it and test it out.
 
@@ -443,7 +436,7 @@ $
 
 And that's it. Now we've done and added a simple command. To finish up, we'd
 want to go and [add a manual page](#manual-pages) and make sure that our code is
-`cstyle`, `lint`, and `pbchk` are all clean.
+`cstyle` and `pbchk` are all clean.
 
 #### Multi-Architecture commands
 
@@ -515,7 +508,6 @@ $ cat Makefile.com
 
 PROG =  gethrtime
 OBJS =  gethrtime.o
-SRCS =  $(OBJS:%.o=../%.c)
 
 FILEMODE = 0555
 
@@ -538,23 +530,16 @@ $(PROG): $(OBJS)
 clean:
         -$(RM) $(CLEANFILES)
 
-lint: lint_PROG
-
 include ../../Makefile.targ
 ```
 
 To start it off, we have a familiar definition, `PROG`. Again, this is the name
 of the resulting command, mainly, `gethrtime`. Next we have to declare the
-`OBJS` and `SRCS`. We use both throughout the build and to help drive things
-like `lint`. In `OBJS` we place a list of our object files. In this case we only
+`OBJS`. We use both throughout the build and to help drive
+otehr targets. In `OBJS` we place a list of our object files. In this case we only
 have one source file and thus one object file, `gethrtime.c` and `gethrtime.o`
 respectively. If we were to have multiple object files, we would list them all
-in that section. The next definition `SRCS` is a make pattern substitution. What
-might surprise you here is the mapping of a `.o` to `../%.c`. When we do the
-actual build, the current directory of any makefiles will be inside the
-architecture subdirectory, in other words `cmd/gethrtime/i386`. Because all of
-our source files are located in `cmd/gethrtime`, we must refer to it via
-`../%.c`
+in that section.
 
 The next bit we, setting `FILEMODE`, is used as part of the install target.
 You'll notice that the install target isn't actually defined here. It is instead
@@ -585,10 +570,10 @@ files. Here we again use another macro, `COMPILE.c` which knows several things
 such as the compiler, the cflags, and the cppflags. You should never directly
 invoke the compiler, only through the macros.
 
-From here on out, things stay relatively straightforward. Previously we didn't
-worry about a `clean` target, but now that we've generated intermeidate object
-files we have to go through and clean them up. The `lint` target is the same as
-before. Finally, we end things with an include of `Makefile.targ` from inside of
+From here on out, things stay relatively straightforward. Previously we
+didn't worry about a `clean` target, but now that we've generated
+intermeidate object files we have to go through and clean them up.
+Finally, we end things with an include of `Makefile.targ` from inside of
 the `cmd` directory.
 
 ##### The Architecture Makefiles
@@ -708,9 +693,8 @@ all     :=      TARGET = all
 install :=      TARGET = install
 clean   :=      TARGET = clean
 clobber :=      TARGET = clobber
-lint    :=      TARGET = lint
 
-all clean clobber lint: $(SUBDIRS)
+all clean clobber: $(SUBDIRS)
 
 install: $(SUBDIRS)
         -$(RM) $(ROOTPROG)
@@ -757,17 +741,14 @@ same target that the original makefile was invoked with. We follow this up with
 the specific definition for FRC. Because this does not actually generate
 anything, we can remain confident that it will always cause the `SUBDIRS` target
 to be out of date and thus cause us to run again. To wrap everything up, we do
-one last include for `Makefile.targ`. This includes some of the various
-definitions that we use such as `lint_PROG`.
+one last include for `Makefile.targ`.
 
 #### Adding Multiple Source Files
 
 Now that we're this far, adopting this setup to have multiple source files is
 actually quite simple. There are two changes that we need to make to our
 `Makefile.com` file. The first is to append the new object file to the `OBJS`
-variable. The second is to change how we're handling the `lint` target.
-Currently the `lint` target is set to `lint_PROG`. We need to change that to
-`lint_SRCS`. While the `SRCS` assignment we made in `Makefile.com` earlier may
+variable. to While the `SRCS` assignment we made in `Makefile.com` earlier may
 have been mysterious, this is one of the places where it gets used. If we make
 those two changes and say we have a new file called `foo.c` our Makefile.com
 looks like:
@@ -791,7 +772,6 @@ $ cat cmd/gethrtime/Makefile.com
 
 PROG =  gethrtime
 OBJS =  gethrtime.o foo.o
-SRCS =  $(OBJS:%.o=../%.c)
 
 FILEMODE = 0555
 
@@ -813,8 +793,6 @@ $(PROG): $(OBJS)
 
 clean:
         -$(RM) $(CLEANFILES)
-
-lint: lint_SRCS
 
 include ../../Makefile.targ
 
@@ -868,7 +846,6 @@ $ cat Makefile.com
 
 PROG =  gethrtime
 OBJS =  gethrtime.o
-SRCS =  $(OBJS:%.o=../%.c)
 
 FILEMODE = 0555
 
@@ -892,8 +869,6 @@ $(PROG): $(OBJS)
 
 clean:
         -$(RM) $(CLEANFILES)
-
-lint: lint_PROG
 
 include ../../Makefile.targ
 $ dmake clobber
@@ -949,8 +924,8 @@ sparcv9/
 
 At this top level we can see that we have two different makefiles which control
 different parts of the compilation process and then there are five directories.
-The `common` directory contains all of the code, headers, mapfiles, and lint
-libraries that are common to all architectures. For most libraries, this will
+The `common` directory contains all of the code, headers, and mapfiles
+that are common to all architectures. For most libraries, this will
 contain all of the code and headers. Next, each library should have an
 architecture specific directory for each supported architecture. That's why you
 see one for both 32-bit and 64-bit x86 and SPARC. The top level Makefile
@@ -1089,11 +1064,10 @@ all := TARGET = all
 clean := TARGET = clean
 clobber := TARGET = clobber
 install := TARGET = install
-lint := TARGET = lint
 
 .KEEP_STATE:
 
-all clean clobber lint: $(SUBDIRS)
+all clean clobber: $(SUBDIRS)
 
 install: install_h $(SUBDIRS)
 
@@ -1138,9 +1112,9 @@ targets.
 
 The next important part is where we define all of the targets which are
 ISA-dependent and have them depend on `$(SUBDIRS)`. At a minimum there will
-always be what you see above: specifically `all`, `clean`, `clobber`, and
-`lint`. By depending on `$(SUBDIRS)` and using the conditional assignment, we
-know for sure that we will recurse into each of the subdirectories and invoke
+always be what you see above: specifically `all`, `clean`, and `clobber`.
+By depending on `$(SUBDIRS)` and using the conditional assignment,
+we know for sure that we will recurse into each of the subdirectories and invoke
 make with our desired target.
 
 Next we have the `install` target. If there are no header files, then the
@@ -1215,13 +1189,9 @@ SRCDIR = ../common
 
 LDLIBS += -lc
 
-$(LINTLIB) := SRCS = $(SRCDIR)/$(LINTSRC)
-
 .KEEP_STATE:
 
 all: $(LIBS)
-
-lint: lintcheck
 
 include ../../Makefile.targ
 $
@@ -1253,9 +1223,8 @@ therefore our paths need to be relative to that.
 
 Following that we declare `LIBS`. This should always be set to `$(DYNLIB)
 $(LINTLIB)` which takes care of making sure that whenever we're invoked we're
-taking care of both the actual shared object and the corresponding lint library.
-We also specify where to find the actual source code which will almost always be
-in `../common`.
+taking care of both the actual shared object.  We also specify where to find the
+actual source code which will almost always be in `../common`.
 
 All of the various flags that one would want to pass to the compiler,
 pre-processor, and linker need to be specified at this point, including the set
@@ -1268,12 +1237,12 @@ position independent code or anything else that you might commonly pass for a
 library, the illumos makefiles take care of that for you.
 
 There are a few targets that all libraries will end up defining in
-`Makefile.com`, specifically `lint` and `all`. `all` should simply depend on
-`$(LIBS)` and `lint` on `lintcheck`. If your library requires specific targets,
-for example one of your object files will come from something like `lex(1)` or
-`yacc(1)`, then you'll need to add additional rules. However, if you do not have
-anything special, you should not be adding your own rules to build various
-aspects of your library excepting very specific and rare situations.
+`Makefile.com`, specifically `all`. `all` should simply depend on `$(LIBS)`. If
+your library requires specific targets, for example one of your object files
+will come from something like `lex(1)` or `yacc(1)`, then you'll need to add
+additional rules. However, if you do not have anything special, you should not
+be adding your own rules to build various aspects of your library excepting very
+specific and rare situations.
 
 To finish off the makefile, you should include `Makefile.targ` and again
 remember to watch out for the fact that you're including this a subdirectory
@@ -1312,10 +1281,9 @@ important to note that we never define any recipes for `install` itself. We rely
 on the fact that each of these takes care of one aspect or another of the build.
 The `all` target takes care of building the library itself. `$(ROOTLIBS)`
 installs the library into the proto area. `$(ROOTLINKS)` takes care of
-installing the compilation symlinks for the library into the proto area and
-finally `$(ROOTLINT)` takes care of installing the lint library. The 64-bit
-versions of these macros do the exact same thing, but ensure that everything is
-set for the 64-bit version of them.
+installing the compilation symlinks for the library into the proto area.  The
+64-bit versions of these macros do the exact same thing, but ensure that
+everything is set for the 64-bit version of them.
 
 Now these makefiles can occasionally get a bit more complicated. Let's take as
 an example, `libproc`'s amd64 library. Here's what it looks like:
@@ -1536,33 +1504,6 @@ EOF
 $
 ```
 
-Now the last portion that we need is the lint library. Here's what that will
-look like for our library:
-
-```
-$ cat > common/llib-lsolo <<EOF
-/*
- * This file and its contents are supplied under the terms of the
- * Common Development and Distribution License ("CDDL"), version 1.0.
- * You may only use this file in accordance with the terms of version
- * 1.0 of the CDDL.
- *
- * A full copy of the text of the CDDL should have accompanied this
- * source.  A copy of the CDDL is also available via the Internet at
- * http://www.illumos.org/license/CDDL.
- */
-
-/*
- * Copyright (c) 2013 Han Solo.  All rights reserved.
- */
-
-/* LINTLIBRARY */
-/* PROTOLIB1 */
-
-#include <libsolo.h>
-EOF
-```
-
 Great, now we've set up all of our source, so let's go onto the makefiles that
 we need.
 
@@ -1600,13 +1541,9 @@ SRCDIR = ../common
 
 LDLIBS += -lc
 
-$(LINTLIB) := SRCS = $(SRCDIR)/$(LINTSRC)
-
 .KEEP_STATE:
 
 all: $(LIBS)
-
-lint: lintcheck
 
 include ../../Makefile.targ
 ```
@@ -1642,11 +1579,10 @@ all := TARGET = all
 clean := TARGET = clean
 clobber := TARGET = clobber
 install := TARGET = install
-lint := TARGET = lint
 
 .KEEP_STATE:
 
-all clean clobber install lint: $(SUBDIRS)
+all clean clobber install: $(SUBDIRS)
 
 install: install_h $(SUBDIRS)
 
@@ -1833,7 +1769,6 @@ UTSBASE = ../..
 #
 MODULE          = vnic
 OBJECTS         = $(VNIC_OBJS:%=$(OBJS_DIR)/%)
-LINTS           = $(VNIC_OBJS:%.o=$(LINTS_DIR)/%.ln)
 ROOTMODULE      = $(ROOT_DRV_DIR)/$(MODULE)
 CONF_SRCDIR     = $(UTSBASE)/common/io/vnic
 
@@ -1846,14 +1781,13 @@ include $(UTSBASE)/intel/Makefile.intel
 # Define targets
 #
 ALL_TARGET      = $(BINARY) $(SRC_CONFILE)
-LINT_TARGET     = $(MODULE).lint
 INSTALL_TARGET  = $(BINARY) $(ROOTMODULE) $(ROOT_CONFFILE)
 
 #
 # Overrides
 #
 CFLAGS          += $(CCVERBOSE)
-LDFLAGS         += -dy -Ndrv/dld -Nmisc/mac -Nmisc/dls
+LDFLAGS         += -Ndrv/dld -Nmisc/mac -Nmisc/dls
 
 CERRWARN        += -_gcc=-Wno-switch
 CERRWARN        += -_gcc=-Wno-uninitialized
@@ -1870,12 +1804,6 @@ all:            $(ALL_DEPS)
 clean:          $(CLEAN_DEPS)
 
 clobber:        $(CLOBBER_DEPS)
-
-lint:           $(LINT_DEPS)
-
-modlintlib:     $(MODLINTLIB_DEPS)
-
-clean.lint:     $(CLEAN_LINT_DEPS)
 
 install:        $(INSTALL_DEPS)
 
@@ -1899,9 +1827,8 @@ in a moment. The value of `$(OBJS_DIR)` will vary based on whether we're doing a
 debug or non-debug build and whether or not we're doing a 32-bit or 64-bit
 build. If you do a standard debug and non-debug build you'd see four
 directories: `obj32`, `obj64`, `debug32`, `debug64`. Each of these directories
-would contain the compiled object files and the generated module. `LINTS` does a
-similar transformation on the `VNIC_OBJS`, except this time for running lint.
-The `ROOTMODULE` line, describes where we'll install the driver.  In this case,
+would contain the compiled object files and the generated module. The
+`ROOTMODULE` line, describes where we'll install the driver.  In this case,
 `ROOT_DRV_DIR` expands to `/usr/kernel/drv`.
 
 Just like with libraries, we have common makefiles that describe how to build
@@ -1909,17 +1836,15 @@ targets and common definitions. With these definitions in place, we go ahead and
 include the first of the two common files.
 
 The following section describes what we're going to be building as a part of
-each phase. Specifically, what does `make all`, `make lint`, and `make install`
-responsible for putting into place. What we see here matches what we expect for
-the vast majority of kernel mdoules. Specifically that the `ALL_TARGET` needs to
-build the binary module as defined by `BINARY` and that it's responsible for
-making sure that the configuration file is there as well. If a module doesn't
-have a configuration file for some reason, then the `SRC_CONFFILE` line
-would be dropped. `LINT_TARGET` defines what we do for `dmake lint`, which is to
-run lint for this kernel module. Finally, the `INSTALL_TARGET` takes care of
-making sure that we actually install everything into the proto area. If there
-was no configuration file for the driver, then the `ROOT_CONFFILE` would be left
-out.
+each phase. Specifically, what is `make all` and `make install` responsible for
+putting into place. What we see here matches what we expect for the vast
+majority of kernel mdoules. Specifically that the `ALL_TARGET` needs to build
+the binary module as defined by `BINARY` and that it's responsible for making
+sure that the configuration file is there as well. If a module doesn't have a
+configuration file for some reason, then the `SRC_CONFFILE` line would be
+dropped. Finally, the `INSTALL_TARGET` takes care of making sure that we
+actually install everything into the proto area. If there was no configuration
+file for the driver, then the `ROOT_CONFFILE` would be left out.
 
 The build has default sets of flags for the compiler and link-editor. In the
 overrides section modules may add additional values for `CPPFLAGS`,
@@ -1936,8 +1861,7 @@ differences between compilers.
 
 The `LDFLAGS` is generally the most important part for any kernel module. As you
 can see, ther are two different sets of flags. While these are all in `ld(1)`,
-it's worth talking about them. The first `-dy`, tells the linker it should be
-producing a dynamic object. Next, the `-N` arguments specify the dependencies
+it's worth talking about them. The `-N` arguments specify the dependencies
 that this module has on other modules. The kernel run-time link-editor (krtld)
 ensures that all of the dependent modules are loaded before loading this module.
 
@@ -1975,15 +1899,13 @@ driver:
 $(OBJS_DIR)/%.o:		$(UTSBASE)/common/io/vnic/%.c
 	$(COMPILE.c) -o $@ $<
 	$(CTFCONVERT_O)
-
-$(LINTS_DIR)/%.ln:		$(UTSBASE)/common/io/vnic/%.c
-	@($(LHEAD) $(LINT.c) $< $(LTAIL))
 ```
 
-The first one describes the rules for building C files, the second is for
-building lint. These rules are describing the directories to look in for
-building. That should be the only difference between the set of rules, the
-directories to look in, otherwise, the rules should look identical.
+These rules are describing the directories to look in for building. That should
+be the only difference between the set of rules, the directories to look in,
+otherwise, the rules should look identical. The main difference you'll see
+occasionally is that some of them will refer to assembly files (`.S` or `.s`
+files).
 
 ### Adding a new Kernel Module
 
@@ -2201,10 +2123,6 @@ to do is to add the following logic to the file `uts/common/Makefile.rules`:
 $(OBJS_DIR)/%.o:                $(UTSBASE)/common/io/nr/%.c
         $(COMPILE.c) -o $@ $<
         $(CTFCONVERT_O)
-
-
-$(LINTS_DIR)/%.ln:              $(UTSBASE)/common/io/%.c
-        @($(LHEAD) $(LINT.c) $< $(LTAIL))
 ```
 
 The first rule describes how to build the module. With rare exception, the build
@@ -2212,8 +2130,7 @@ rule should look exactly like this. This file will be included when building
 every kernel module, and this drives the means of building components and
 mapping a given file name like, `nr.o` to the file `uts/common/io/nr/nr.c`. A
 consequence of this design is that it means every file that is used to build a
-given kernel component must have a unique name. The second rule does a similar
-thing, except for building lint.
+given kernel component must have a unique name.
 
 Next, we add a list of objects that are required for this module. To do that we
 add the following line to the file `uts/common/Makefile.files`:
@@ -2263,17 +2180,13 @@ UTSBASE = ../..
 
 MODULE          = nr
 OBJECTS         = $(NR_OBJS:%=$(OBJS_DIR)/%)
-LINTS           = $(NR_OBJS:%.o=$(LINTS_DIR)/%.ln)
 ROOTMODULE      = $(ROOT_DRV_DIR)/$(MODULE)
 CONF_SRCDIR     = $(UTSBASE)/common/io/nr
 
 include $(UTSBASE)/intel/Makefile.intel
 
 ALL_TARGET      = $(BINARY) $(SRC_CONFILE)
-LINT_TARGET     = $(MODULE).lint
 INSTALL_TARGET  = $(BINARY) $(ROOTMODULE) $(ROOT_CONFFILE)
-
-LDFLAGS += -dy
 
 .KEEP_STATE:
 
@@ -2284,12 +2197,6 @@ all:            $(ALL_DEPS)
 clean:          $(CLEAN_DEPS)
 
 clobber:        $(CLOBBER_DEPS)
-
-lint:           $(LINT_DEPS)
-
-modlintlib:     $(MODLINTLIB_DEPS)
-
-clean.lint:     $(CLEAN_LINT_DEPS)
 
 install:        $(INSTALL_DEPS)
 
