@@ -536,7 +536,7 @@ include ../../Makefile.targ
 To start it off, we have a familiar definition, `PROG`. Again, this is the name
 of the resulting command, mainly, `gethrtime`. Next we have to declare the
 `OBJS`. We use both throughout the build and to help drive
-otehr targets. In `OBJS` we place a list of our object files. In this case we only
+other targets. In `OBJS` we place a list of our object files. In this case we only
 have one source file and thus one object file, `gethrtime.c` and `gethrtime.o`
 respectively. If we were to have multiple object files, we would list them all
 in that section.
@@ -572,7 +572,7 @@ invoke the compiler, only through the macros.
 
 From here on out, things stay relatively straightforward. Previously we
 didn't worry about a `clean` target, but now that we've generated
-intermeidate object files we have to go through and clean them up.
+intermediate object files we have to go through and clean them up.
 Finally, we end things with an include of `Makefile.targ` from inside of
 the `cmd` directory.
 
@@ -746,12 +746,9 @@ one last include for `Makefile.targ`.
 #### Adding Multiple Source Files
 
 Now that we're this far, adopting this setup to have multiple source files is
-actually quite simple. There are two changes that we need to make to our
-`Makefile.com` file. The first is to append the new object file to the `OBJS`
-variable. to While the `SRCS` assignment we made in `Makefile.com` earlier may
-have been mysterious, this is one of the places where it gets used. If we make
-those two changes and say we have a new file called `foo.c` our Makefile.com
-looks like:
+actually quite simple. There is only one change that we need to make to our
+`Makefile.com` file at this point: the new object file to the `OBJS`
+variable. If we had a new file called `foo.c` our Makefile.com looks like:
 
 ```
 $ cat cmd/gethrtime/Makefile.com

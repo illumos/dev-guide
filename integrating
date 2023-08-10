@@ -11,21 +11,21 @@ tips and advice to prove a smooth integration process.
 
 When you want to submit a change into illumos, we call that a request to
 integrate, or RTI. illumos has no single person that serves as a gatekeeper. An
-RTI is sent to the the core team. n core team member who is familiar with the
+RTI is sent to the core team. A core team member who is familiar with the
 subject matter will review the materials and either accept it or not. If the
 change isn't accepted for whatever reason, then the core team member will
-explain why and work with to get things integrated. Most of the time, the core
-team members are just looking for some small amount of additional explanation
-or confirmation about a change. The core team members go through this same
-process.
+explain why. That team member will work with you to get things fixed up. Most of
+the time, the core team members are just looking for some small amount of
+additional explanation or confirmation about a change. The core team members go
+through this same process when integrating their own changes.
 
 ### The Requirements
 
 When you want to integrate a change, it should include the following information:
 
-  * List of Reviewers
+  * A list of reviewers
 
-  * Explanation of Testing in the ticket
+  * An explanation of testing in the corresponding tickets
 
   * The output of `git pbchk`
 
@@ -63,7 +63,7 @@ work in ZFS before, then that may be a warning sign to your advocate.
 If a reviewer is not satisfied, you may not list them as a reviewer when
 submitting your RTI. Furthermore, if there are issues or disagreements about
 things between you and your reviewers, that is something that you should
-mention in the core team. It's okay to still submit the change.
+mention to the core team. It's okay to still submit the change.
 
 When providing materials for review, the best thing to use here is
 [gerrit](https://illumos.org/docs/contributing/gerrit/).  If you have written
@@ -173,7 +173,7 @@ them a day before you nag them.
 Like the rest of us, members of the core team are human, and occasionally a
 given change might fall through the cracks. It could be that the core team
 member most familiar with your area is not available and someone is waiting for
-them tog et back. If a core team member needs time to review the contents of
+them to get back. If a core team member needs time to review the contents of
 the change or has questions regarding the nature of it and requests more time,
 that core team member should tell you that. The core team does not want to have
 changes feel like they are sitting in limbo.
