@@ -291,13 +291,17 @@ preferred.
 One of the easiest ways to test your changes is to boot a test system onto your
 new bits. No matter what kind of change you've made, this should work. There are
 various ways to do this based on your distribution; however, for most folks this
-can be achieved via the build tool onu(1ONBLD). If you're inside of bldenv and
-have finished your build, the simplest way to do this is:
+can be achieved via the build tool onu(1ONBLD). If you've finished your build
+and are still in the shell started by `bldenv`, the simplest way to do this is:
 
 ```
-# onu -t new-nightly-be
+# onu -t new-nightly-be -d $PKGARCHIVE
 #
 ```
+
+as `bldenv` should have set `$PKGARCHIVE` to either
+`${CODEMGR_WS}/packages/${MACH}/nightly` (for a DEBUG build) or
+`${CODEMGR_WS}/packages/${MACH}/nightly-nd` (for a non-DEBUG build).
 
 Once this is done, you can reboot into the new build environment. You'll want to
 consult with your distribution for the best way to do this.
