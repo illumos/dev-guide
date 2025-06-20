@@ -465,7 +465,7 @@ In a given change, there may be one or more bugs fixed. Each bug corresponds
 to an entry at <http://illumos.org/issues/>. If you have logically separate
 changes, they should be done as separate commits. A rule of thumb is that if
 a single bug fix or RFE can stand on its own, it probably should. You should
-mention additional-contributors and Reviewers in the commit message and don't
+mention additional contributors and Reviewers in the commit message and don't
 worry about the 'Approved By' line, the advocate will take care of that for
 you.
 
