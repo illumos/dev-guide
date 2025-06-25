@@ -461,13 +461,13 @@ Reviewed by: Dan Cross <cross@oxidecomputer.com>
 Approved by: Dan McDonald <danmcd@mnx.io>
 ```
 
-In a given change, there may be one or more bugs fixed. Each bug corresponds
-to an entry at <http://illumos.org/issues/>. If you have logically separate
-changes, they should be done as separate commits. A rule of thumb is that if
-a single bug fix or RFE can stand on its own, it probably should. You should
-mention additional contributors and Reviewers in the commit message and don't
-worry about the 'Approved By' line, the advocate will take care of that for
-you.
+In a given change, there may be one or more bugs fixed. Each bug corresponds to
+an entry at <http://illumos.org/issues/>. If you have logically separate
+changes, they should be done as separate commits. A rule of thumb is that if a
+single bug fix or RFE can stand on its own, it probably should; however each
+change needs to be tested independently. You should
+mention Reviewers in the commit message and don't worry about the 'Approved By'
+line, the advocate will take care of that for you.
 
 In addition to the commit format, a given change should only be one commit. If
 you already have one commit, you can modify the message by using the following
@@ -489,6 +489,24 @@ $
 
 Once you have, your tested change and your reviewers in line, there's just one
 last stop.
+
+#### Combining Multiple Authors
+
+On complex changes and larger projects, there may be more than one person who
+did a substantial portion of the work and it may be impractical to separate that
+into multiple commits due to the nature of the change and testing required. To
+credit additional people, we use the `Portions contributed by:` tag. This occurs
+before any reviewer lines. Here is an example of this:
+
+```
+15942 PCIe hotplug insertion does not configure the slot
+15943 PCIe hotplug startup races, leaving configuration incomplete
+15941 cfgadm -c configure does nothing for enabled devices
+Portions contributed by: Keith M Wesolowski <wesolows@oxide.computer>
+Reviewed by: Andy Fiddaman <illumos@fiddaman.net>
+Reviewed by: Dan Cross <cross@oxidecomputer.com>
+Approved by: Dan McDonald <danmcd@mnx.io>
+```
 
 ### pbchk
 
