@@ -442,8 +442,8 @@ illumos has a standard commit format. That is:
 ```
 <bug id> <synopsis>
 <bug id 2> <synopsis 2>
-<Portions Contributed n>
-<Portions Contributed n+1>
+<Portions Contributed n> (if multiple authors, see...)
+<Portions Contributed n+1> (... Combining Multiple Authors below)
 <Reviewer n>
 <Reviewer n+1>...
 <Advocate>
@@ -452,13 +452,16 @@ illumos has a standard commit format. That is:
 An example of this is:
 
 ```
-15942 PCIe hotplug insertion does not configure the slot
-15943 PCIe hotplug startup races, leaving configuration incomplete
-15941 cfgadm -c configure does nothing for enabled devices
-Portions contributed by: Keith M Wesolowski <wesolows@oxide.computer>
-Reviewed by: Andy Fiddaman <illumos@fiddaman.net>
-Reviewed by: Dan Cross <cross@oxidecomputer.com>
-Approved by: Dan McDonald <danmcd@mnx.io>
+3673 core dumping is abysmally slow
+3671 left behind enemy lines, agent LWP can go rogue
+3670 add visibility into agent LWP's spymaster
+Reviewed by: Keith M Wesolowski <keith.wesolowski@joyent.com>
+Reviewed by: Joshua M. Clulow <jmc@joyent.com>
+Reviewed by: Robert Mustacchi <rm@joyent.com>
+Reviewed by: Richard Lowe <richlowe@richlowe.net>
+Reviewed by: Garrett D'Amore <garrett@damore.org>
+Reviewed by: Eric Schrock <eric.schrock@delphix.com>
+Approved by: Richard Lowe <richlowe@richlowe.net>
 ```
 
 In a given change, there may be one or more bugs fixed. Each bug corresponds to
