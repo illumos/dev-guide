@@ -120,7 +120,7 @@ the command named `name` in section `number` of the manual. When they appear
 in this developer's guide, there should be a hyperlink to the appropriate
 manual page. For example, read(2) refers to the `read()` function
 in section 2 of the manual, while ctf(5) refers to the manual page on the CTF
-file format, which is section 4. Manual sections may have a sub-descriptor
+file format, which is section 5. Manual sections may have a sub-descriptor
 after the number: connect(3SOCKET) describes the `connect()` function that
 can be found in the `3SOCKET` section of the manual; this section describes
 functions that are a part of the `libsocket` library.
